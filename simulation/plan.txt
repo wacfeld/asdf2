@@ -1,1 +1,48 @@
 The layout for the simulation (main.py)
+
+Classes:
+    MindController
+
+    Intersection
+        Road
+            Lane
+            ZebraCrossing
+            Light
+        Middle
+        Sidewalk
+
+    Portal
+
+    Car
+    Pedestrian
+
+
+General:
+A tick is 1/2 a second
+Every time we go through we immediaely decrease all reaction time variables by 0.5 (one tick length in seconds)
+
+
+Car/Ped generation:
+Every tick MindController calls onetick() on all Portal Classes
+The Portals decide based on random numbers whether to create a new Car and/or Pedestrian
+    If one does, a Car and/or Pedestrian is made inside the Portal
+    The destination(s) is/are decided as another portal with different field "position", which is 0, 1, 2, 3
+    This way cars and people behave realistically
+
+Then the cars/peds are given to the "temp" field of the adjacent road
+The MindController then calls onetick() on the Roads
+    The Roads go through their "temp" field and sort the cars and pedestrians
+        If it is a Car then it looks at the first Intersection in Car.path and figures out if it's up, down, left, right based on Intersection.gridcoords
+        Then places the Car in the appropriate Lane
+        If it is a Pedestrian then it checks Pedestrian.walkingtimeleft
+            If it is > 0 we leave the Ped in Road.temp and decrease walkingtimeeft by a constant
+            If it is None, then we get the Road's length and get walkingtimeleft directly proportional to that, and do nothing else
+            If is <= 0 we then give append the ped to Sidewalk.peds of the left sidewalk adjacent to the current Road and reset walkingtimeleft to None
+
+
+Stuff inside road:
+    Everytime onetick() is called on Road:
+        It runs the neural network and changes Road.light.state accordingly
+        It then calls onetick() on all 3 lanes:
+            The Lane checks Lane.cars[0]
+                If it is empty,
