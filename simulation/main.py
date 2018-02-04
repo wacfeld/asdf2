@@ -1,6 +1,7 @@
 import random
 
 # TODO: Figure Out Numbers for stuff labeled FON
+# TODO: change stuff for ticks from 1/2 second to 1/10 second
 
 
 class MindController:
@@ -12,7 +13,7 @@ class MindController:
         self.intersections = [[None] * s for i in range(s)]
         self.initinter(s)
         self.portals = []  # for easy access
-        self.ticks = 0  # time for the simulation; 1 tick is 1/2 a "second"
+        self.ticks = 0  # time for the simulation; 1 tick is 1/10 a "second"
 
     @staticmethod
     def decidedest(self, p):
@@ -59,7 +60,7 @@ class MindController:
                     else:
                         inter.adjacents[coords.index([a, b])] = self.intersections[b][a]
 
-    def onetick():  # does everything that happens in a single tick
+    def onetick(self):  # does everything that happens in a single tick
         # (almost?) every has has a similar function which is called by this one
         # spawn and release cars, make everything move forwards, increments waiting counters, etc.
         for p in self.portals:
@@ -142,7 +143,6 @@ class ZebraCrossing:
         # the crossing checks when numberofpedestrians == 0 and then it becomes not occupied
         self.occupied = False
         self.numberofpedestrians = 0
-        self.light = Light(self)
 
         self.parentroad = parent
 
@@ -156,12 +156,7 @@ class Light:  # applies to traffic and pedestrian lights, since they are effecti
     def __init__(self, parent):  # will figure out parenttype on its own
         self.state = 'r'
         self.parenttype = 'z' if type(parent) is ZebraCrossing else 'r'
-        self.parent = parent
-
-    # either 'z' for zebra crossing, or 'r' for road
-    parenttype = None  # we can infer the light type from this
-    parent = None  # either Road or ZebraCrossing
-    state = None  # can be 'r', 'y', 'g','l', last one means left turning, doesn't apply for pedestrian lights
+        self.parent = parent  # can be road or zebra crossing
 
 
 class Middle:
@@ -261,14 +256,14 @@ class Pedestrian:
 
     def __init__(self, p):
         self.walkingspeed = Pedestrian.decidewalkingspeed()
-        self.parent = p  # a Sidewalk
+        self.parent = p  # always a Sidewalk
         self.reacheddest = False  # TODO: obsolete?
         self.iswalking = False
 
         self.walkingtimeleft = None  # only used when waiting to walk onto sidewalk due to road length
 
     @staticmethod
-    def decidewalkingspeed():
+    def decidewalkingspeed(self):
         # TODO: figure this out, must be Gaussian random
         pass
 

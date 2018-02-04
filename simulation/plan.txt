@@ -2,24 +2,122 @@ The layout for the simulation (main.py)
 
 Classes:
     MindController
+        __init__(self, s)
+
+        int sidelength
+        matrix intersections
+        list portals
+        int ticks
+
+        void initinter(self, s)
+        Portal decidedest(self, p)
+        list pathfind(self, origin, dest)
+        void? onetick(self)
 
     Intersection
-        Road
-            Lane
-            ZebraCrossing
-            Light
-        Middle
-        Sidewalk
+        __init__(self, gc)
+
+        list adjacents
+        Middle middle
+        list gridcoords
+        list roads
+
+        Sidewalk s1, s2, s3, s4
+
+    Road
+        __init__(self, p)
+
+        Lane lef, forward, right
+        list lanes
+        Intersection parent
+        ZebraCrossing crossing
+        Light light
+        list temp
+
+        void giveroad(self, obj)
+        void onetick(self)
+
+    Lane
+        __init__(self, d, parent, c)
+
+        liist cars
+        char direction
+        Road parentroad
+        int capacity
+
+    ZebraCrossing
+        __init__(self, parent)
+
+        bool occupied
+        int numberofpedestrians
+        Light pedlight
+        Road parentroad
+
+    Light
+        __init__(self, parent)
+
+        char state
+        char parenttype
+        ZebraCrossing/Road parent
+
+    Middle
+        __init__(self, parent)
+
+        matrix squares
+        Intersection parent
+        static int middlesize
+
+    Sidewalk
+        __init__(self, p, c1, c2)
+
+        Intersection parent
+        list peds
+        ZebraCrossing crossing1, crossing2
 
     Portal
+        __init__(self, road, pos)
+
+        list cars
+        list peds
+        Road adjroad
+        list finished
+        int position
+
+        static float carprob
+        satic float pedprob
+
+        void createcar(self)
+        void createped(self)
+        void deleteobj(self, c)
+        void releasesome(self)
+        void deletefinished(self)
+        void onetick(self)
 
     Car
+        __ini__(self, p)
+
+        Portal/Lane/Middle parent
+        Portal destination
+        list path
+        list coords
+        list motionvector
+        bool reacheddest
+
     Pedestrian
+        __init__(self, p)
+
+        float walkingspeed
+        Sidewalk parent
+        bool reacheddest
+        bool iswalkking
+        float waitingtimeleft
+
+        float decidewalkingspeed(self)
 
 
 General:
-A tick is 1/2 a second
-Every time we go through we immediaely decrease all reaction time variables by 0.5 (one tick length in seconds)
+A tick is 1/10 a second
+Every time we go through we immediaely decrease all reaction time/waiting time variables by 0.1 (one tick length in seconds)
 
 
 Car/Ped generation:
@@ -44,5 +142,6 @@ Stuff inside road:
     Everytime onetick() is called on Road:
         It runs the neural network and changes Road.light.state accordingly
         It then calls onetick() on all 3 lanes:
-            The Lane checks Lane.cars[0]
-                If it is empty,
+            The Lane goes through Lane.cars that aren't None and don't have Car.reationdelay = None and does Car.reactiondelay -= 0.1
+        Then it finds the first Car in Lane.cars that isn't None
+            If Car.reactiondelay <= 0 then we check Middle.square[y][x] which is right in front of the Lane
