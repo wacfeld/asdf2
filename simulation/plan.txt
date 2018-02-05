@@ -14,6 +14,8 @@ Classes:
         list pathfind(self, origin, dest)
         void? onetick(self)
 
+        static char decidelightcolor(light)
+
     Intersection
         __init__(self, gc)
 
@@ -21,8 +23,9 @@ Classes:
         Middle middle
         list gridcoords
         list roads
-
         Sidewalk s1, s2, s3, s4
+
+        Road getoppositeroad(r)
 
     Road
         __init__(self, p)
@@ -33,6 +36,7 @@ Classes:
         ZebraCrossing crossing
         Light light
         list temp
+        float length
 
         void giveroad(self, obj)
         void onetick(self)
@@ -40,10 +44,15 @@ Classes:
     Lane
         __init__(self, d, parent, c)
 
-        liist cars
+        list cars
         char direction
         Road parentroad
+
+        float length
         int capacity
+
+        float calccapacity(self, length)
+        bool isfull(self)
 
     ZebraCrossing
         __init__(self, parent)
@@ -52,6 +61,7 @@ Classes:
         int numberofpedestrians
         Light pedlight
         Road parentroad
+        static? float length
 
     Light
         __init__(self, parent)
@@ -63,9 +73,9 @@ Classes:
     Middle
         __init__(self, parent)
 
-        matrix squares
+        float sidelength
         Intersection parent
-        static int middlesize
+        bool areaisclear(self, area)
 
     Sidewalk
         __init__(self, p, c1, c2)
@@ -84,8 +94,8 @@ Classes:
         int position
 
         static float carprob
-        satic float pedprob
 
+        satic float pedprob
         void createcar(self)
         void createped(self)
         void deleteobj(self, c)
@@ -94,14 +104,21 @@ Classes:
         void onetick(self)
 
     Car
-        __ini__(self, p)
+        __init__(self, p)
 
         Portal/Lane/Middle parent
         Portal destination
         list path
+        float position
         list coords
         list motionvector
         bool reacheddest
+        float length
+        float speed
+        float acceleration
+        float reactivity
+
+        static float buffer
 
     Pedestrian
         __init__(self, p)
@@ -111,8 +128,10 @@ Classes:
         bool reacheddest
         bool iswalkking
         float waitingtimeleft
+        float reactivity
 
-        float decidewalkingspeed(self)
+        static float decidewalkingspeed()
+        static float calcwalkingtime(length)
 
 
 General:
@@ -121,27 +140,30 @@ Every time we go through we immediaely decrease all reaction time/waiting time v
 
 
 Car/Ped generation:
-Every tick MindController calls onetick() on all Portal Classes
-The Portals decide based on random numbers whether to create a new Car and/or Pedestrian
-    If one does, a Car and/or Pedestrian is made inside the Portal
-    The destination(s) is/are decided as another portal with different field "position", which is 0, 1, 2, 3
-    This way cars and people behave realistically
+    Every tick MindController calls onetick() on all Portal Classes
+    The Portals decide based on Portal.carprob/pedprob whether to create a new Car and/or Pedestrian
+        If one does, a Car and/or Pedestrian is made inside the Portal
+        The destination(s) is/are decided as another portal with different field "position", which is 0, 1, 2, 3
+        This way cars and people behave realistically
 
-Then the cars/peds are given to the "temp" field of the adjacent road
-The MindController then calls onetick() on the Roads
-    The Roads go through their "temp" field and sort the cars and pedestrians
-        If it is a Car then it looks at the first Intersection in Car.path and figures out if it's up, down, left, right based on Intersection.gridcoords
-        Then places the Car in the appropriate Lane
-        If it is a Pedestrian then it checks Pedestrian.walkingtimeleft
-            If it is > 0 we leave the Ped in Road.temp and decrease walkingtimeeft by a constant
-            If it is None, then we get the Road's length and get walkingtimeleft directly proportional to that, and do nothing else
-            If is <= 0 we then give append the ped to Sidewalk.peds of the left sidewalk adjacent to the current Road and reset walkingtimeleft to None
+    Then the cars/peds are given to the "temp" field of the adjacent road
+    The MindController then calls onetick() on the Roads
+        The Roads go through their "temp" field and sort the cars and pedestrians
+            If it is a Car then it looks at the first Intersection in Car.path and figures out if it's up, down, left, right based on Intersection.gridcoords
+                Then checks if Lane.isfull(), if False, then sets Car.position, changes lots of fields, and places in Lane
+                If True, then leaves Car in Road.temp
+            If it is a Pedestrian then it checks Pedestrian.walkingtimeleft
+                If it is > 0 we leave the Ped in Road.temp and decrease walkingtimeeft by a 0.1 (1 tick)
+                If it is None, then we get Road.length and get walkingtimeleft directly proportional to that, and do nothing else
+                If is <= 0 we then append the ped to Sidewalk.peds of the left sidewalk adjacent to the current Road and reset walkingtimeleft to None
 
 
 Stuff inside road:
     Everytime onetick() is called on Road:
-        It runs the neural network and changes Road.light.state accordingly
+        It runs the neural network/whatever decision thing and changes Road.light.state accordingly
         It then calls onetick() on all 3 lanes:
             The Lane goes through Lane.cars that aren't None and don't have Car.reationdelay = None and does Car.reactiondelay -= 0.1
-        Then it finds the first Car in Lane.cars that isn't None
-            If Car.reactiondelay <= 0 then we check Middle.square[y][x] which is right in front of the Lane
+            Then it finds the first Car in Lane.cars that isn't None
+            If Car.reactiondelay <= 0 then we check Middle.areaisclear(area) which is right in front of the Lane
+                If True, we start increasing Car.speed based on Car.acceleration
+            We then find the next car in Lane.cars and set Car.reactiondelay based on Car.reactivity
