@@ -51,6 +51,7 @@ Classes:
         float length
         int capacity
 
+        bool isopen()  checks ZebraCrossing and traffic light
         float calccapacity(self, length)
         bool isfull(self)
 
@@ -164,6 +165,16 @@ Stuff inside road:
         It then calls onetick() on all 3 lanes:
             The Lane goes through Lane.cars that aren't None and don't have Car.reationdelay = None and does Car.reactiondelay -= 0.1
             Then it finds the first Car in Lane.cars that isn't None
-            If Car.reactiondelay <= 0 then we check Middle.areaisclear(area) which is right in front of the Lane
+            If not Lane.isopen():
+                If Car.reactiondelay == None calculate that based on Car.reactivity
+                If *               * == some integer subtract 0.1
+                *                  * == 0 Do math with Car.position/buffer/acceleration/speed/reactiondelay and figure out how much to accelerate/decelerate and act accordingly
+            Check if Car.reactiondelay <= 0
                 If True, we start increasing Car.speed based on Car.acceleration
+            If reached the end of the Lane then we check Middle.areaisclear(area) which is right in front of the Lane
+            Then we gradually(?) push the car onto the middle with the same acceleration
             We then find the next car in Lane.cars and set Car.reactiondelay based on Car.reactivity
+
+
+Stuff inside Middle:
+    onetick():

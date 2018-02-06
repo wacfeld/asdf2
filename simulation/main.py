@@ -228,7 +228,7 @@ class Portal:  # called Portal because cars/pedestrians start and end here (ther
     carprob = 0.1  # (FON) probability that a car will spawn in a given tick, similar below
     pedprob = 0.03  # (FON)
 
-    
+
 class Car:
     def __init__(self, p):
         # cars spawn in Portals which are adjacent to the outer intersections
