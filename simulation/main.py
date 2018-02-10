@@ -1,4 +1,5 @@
 import random
+import math
 
 # TODO: Figure Out Numbers for stuff labeled FON
 # TODO: change stuff for ticks from 1/2 second to 1/10 second
@@ -15,7 +16,9 @@ class MindController:
         self.portals = []  # for easy access
         self.ticks = 0  # time for the simulation; 1 tick is 1/10 a "second"
 
-    @staticmethod
+    def decidecolor(light):
+        pass
+
     def decidedest(self, p):
         # takes portal and returns a portal which isn't on the same side
         ppos = p.position  # for convenience
@@ -28,7 +31,6 @@ class MindController:
 
         return dest
 
-    @staticmethod
     def pathfind(self, origin, dest):
         # we use the A* algorithm to simulate human pathfinding (with a map)
         # returns array of intersections to follow, and the portal (for conevnience and corner cases)
@@ -113,9 +115,13 @@ class Road:
         self.light = Light(self)  # note that lights control the road they belong to, not the opposite!
 
         self.temp = []  # where pedestrians and cars go before being sorted and stuff by onetick()
-
+        self.length = decidelength()
 
     rc = [5,10,5]  # (FON) respective capacity; how much each lane can hold; should be random
+
+    @staticmethod
+    def decidelength():
+        pass
 
     def giveroad(self, obj):  # gets a ped or car from adjacent portal or intersection
         self.temp.append(obj)

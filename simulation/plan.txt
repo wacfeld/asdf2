@@ -1,5 +1,7 @@
 The layout for the simulation (main.py)
 
+import random, math
+
 Classes:
     MindController
         __init__(self, s)
@@ -30,7 +32,7 @@ Classes:
     Road
         __init__(self, p)
 
-        Lane lef, forward, right
+        Lane left, forward, right
         list lanes
         Intersection parent
         ZebraCrossing crossing
@@ -51,7 +53,7 @@ Classes:
         float length
         int capacity
 
-        bool isopen()  checks ZebraCrossing and traffic light
+        bool isopen(self, targetroad)  checks ZebraCrossing and traffic light
         float calccapacity(self, length)
         bool isfull(self)
 
@@ -59,7 +61,7 @@ Classes:
         __init__(self, parent)
 
         bool occupied
-        int numberofpedestrians
+        list peds
         Light pedlight
         Road parentroad
         static? float length
@@ -74,9 +76,13 @@ Classes:
     Middle
         __init__(self, parent)
 
-        float sidelength
+        float sidelength  # some multiple of 6
         Intersection parent
-        bool areaisclear(self, area)
+        list cars
+        matrix occupiedpoints
+
+        bool pathisclear(self, lane, targetroad)
+        2xn matrix getpath(self, lane, targetroad, third)
 
     Sidewalk
         __init__(self, p, c1, c2)
@@ -107,18 +113,24 @@ Classes:
     Car
         __init__(self, p)
 
+        # general facts
         Portal/Lane/Middle parent
         Portal destination
         list path
-        float position
+        bool reacheddest
+
+        # stuff used in Middle
         list coords
         list motionvector
-        bool reacheddest
+        list path
+        int occupiedindex  # see Middle
+
+        # stuff used in Middle and Lane
+        float position
         float length
         float speed
         float acceleration
         float reactivity
-
         static float buffer
 
     Pedestrian
@@ -137,7 +149,7 @@ Classes:
 
 General:
 A tick is 1/10 a second
-Every time we go through we immediaely decrease all reaction time/waiting time variables by 0.1 (one tick length in seconds)
+Every time we go through we immediately decrease all reaction time/waiting time variables by 0.1 (one tick length in seconds)
 
 
 Car/Ped generation:
@@ -159,22 +171,58 @@ Car/Ped generation:
                 If is <= 0 we then append the ped to Sidewalk.peds of the left sidewalk adjacent to the current Road and reset walkingtimeleft to None
 
 
+Lane.isopen(self, currlane, targetroad):
+    Check targetroad.crossing.occupied, if True, return False
+    Check self.crossing.occupied, if True, return False
+    Check area of Middle.pathisclear(self, targetroad), if False, return False
+    return True
+
+
+Middle.pathisclear(self, currlane, targetroad):
+    Figure out if path should be straight or round
+    Figure out which third of targetroad you want to reach, remember as 0, 1, 2 from left to right
+        (0 if turning left, 1 if going forward, 2 if turning right)
+
+    If it's a line, make a list of points, each time increasing either the x or y value by 1
+    If it's round call Middle.getpath(currlane, targetroad, third)
+
+    Take resulting path and
+
+
+Middle.getpath(self, lane, targetroad, third):
+    Create list path
+    Calculate the "origin" of the circle, coords with values not in the Middle
+    Let (o1,o2) be the origin
+    Let a1 be clockwise angle (starting from right) from origin to center of lane
+    Let a2 be similar for origin to targetroad's third
+    Let r be radius (use pythagorean theorem)
+    Let a = a1
+    while a <= a2:
+        Use formula (o1 + r * math.cos(a), o2 + r *  math.sin(a)) to get next point
+        If that point != path[-1], append point to path
+        a += 0.01 (FON)
+
+    return path
+
+
 Stuff inside road:
     Everytime onetick() is called on Road:
         It runs the neural network/whatever decision thing and changes Road.light.state accordingly
         It then calls onetick() on all 3 lanes:
             The Lane goes through Lane.cars that aren't None and don't have Car.reationdelay = None and does Car.reactiondelay -= 0.1
-            Then it finds the first Car in Lane.cars that isn't None
-            If not Lane.isopen():
+            Then it gets the first Car in Lane.cars
+            If not Lane.isopen(targetroad):
                 If Car.reactiondelay == None calculate that based on Car.reactivity
                 If *               * == some integer subtract 0.1
                 *                  * == 0 Do math with Car.position/buffer/acceleration/speed/reactiondelay and figure out how much to accelerate/decelerate and act accordingly
+            Else:
             Check if Car.reactiondelay <= 0
                 If True, we start increasing Car.speed based on Car.acceleration
-            If reached the end of the Lane then we check Middle.areaisclear(area) which is right in front of the Lane
             Then we gradually(?) push the car onto the middle with the same acceleration
             We then find the next car in Lane.cars and set Car.reactiondelay based on Car.reactivity
 
 
 Stuff inside Middle:
     onetick():
+        We loop through Middle.cars:
+        Use math to predict path of each car
