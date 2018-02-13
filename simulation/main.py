@@ -4,7 +4,6 @@ import math
 # TODO: Figure Out Numbers for stuff labeled FON
 # TODO: change stuff for ticks from 1/2 second to 1/10 second
 
-
 class MindController:
     # this controls all the interactions of the simulation, aside from the traffic lights
     # does things like make cars move, spawn, etc.
@@ -177,9 +176,13 @@ class ZebraCrossing:
 
 class Light:  # applies to traffic and pedestrian lights, since they are effectively the same, except in timing
     def __init__(self, parent):  # will figure out parenttype on its own
-        self.state = 'r'
+        self.state = 'r'  # same characters for pedestrian lights, in the matching which makes sense
         self.parenttype = 'z' if type(parent) is ZebraCrossing else 'r'
         self.parent = parent  # can be road or zebra crossing
+
+        self.yellowtimeleft = None
+    
+    constyellowtime = None  # FON, the amount of time a light will be yellow
 
 
 class Middle:
@@ -188,10 +191,22 @@ class Middle:
     # certain square are special; e.g. some are places a car can leave or enter an intersection
 
     def __init__(self, parent):
-        self.squares = [[None] * self.middlesize for i in range(self.middlesize)]
+        self.squares = [[None] * self.sidelength for i in range(self.sidelength)]
         self.parent = parent
+        self.cars = []
+        self.occupiedpoints = []  # matrix of points that cars or their buffer occupy
 
-    middlesize = 6  # (FON) must be even number
+    sidelength = 6 * 1000  # (FON) must be even number
+
+    def pathisclear(self, lane, targetroad):
+        pass
+    
+    def getpath(self, lane, targetroad, third):
+        pass
+    
+    def onetick(self):
+        pass
+
 
 
 class Sidewalk:
@@ -200,6 +215,9 @@ class Sidewalk:
         self.parent = p
         self.peds = []
         self.crossing1, self.crossing2 = c1, c2
+    
+    def onetick(self):
+        pass
 
 
 class Portal:  # called Portal because cars/pedestrians start and end here (there are multiple portals)
@@ -225,6 +243,7 @@ class Portal:  # called Portal because cars/pedestrians start and end here (ther
         return newped
 
     def deleteobj(self, c):  # removes car forever
+        # TODO: make it increase the counter for how many cars/peds got through out of all time
         del self.finished[self.finished.index(c)]  # get index of c in cars, then delete that element
 
     def releasesome(self):
@@ -260,16 +279,30 @@ class Car:
         # when turning cars follow a rough circle
 
         self.parent = p  # either Portal, Lane, or Middle; this also tells us how it should behave
-        # ^cars are always in a digital state
-
         self.destination = None  # the portal it wants to get to
         self.path = []  # array of Intersections followed by one Portal, the path to follow to get to self.destination
 
-        # these only apply when in the middle of an intersection
+        # these are only used when in the middle of an intersection
         self.coords = [None, None]  # (0,0) is center of Intersection, x moves right, y moves up
         self.motionvector = [None, None]  # where it moves next in the Intersection; might change to direction and angle
+        self.occupiedindex = None  # index of points this car occupies, from Middle.occupiedpoints
 
-        self.reacheddest = False  # TODO: obsolete?
+        # stuff used in general
+        # FON all of this, probably research
+        # TODO: decide if certain car values (reaction speed, etc.) are random? If not, make static
+        # ^ similar for Pedestrians
+        self.position = None  # location on road, scalar
+        self.length = None  # from bumper to bumper
+        self.speed = None  # pick a unit, something/tick
+        self.acceleration = None  # also pick a unit
+        self.buffer = None  # keeps cars from getting too close
+        self.reactiondelay = None  # how long until driver should react to any incident
+        self.reactivity = None  # initial value for reactiondelay
+
+    # @staticmethod
+    # def deciderandvalues():
+        # will return Gaussian random values for length, speed, acceleration, etc.
+        # pass
 
 
 class Pedestrian:
@@ -279,17 +312,22 @@ class Pedestrian:
     # then after x time goes to the other sidwalk and unoccupies the crossing
 
     def __init__(self, p):
-        self.walkingspeed = Pedestrian.decidewalkingspeed()
-        self.parent = p  # always a Sidewalk
-        self.reacheddest = False  # TODO: obsolete?
-        self.iswalking = False
+        self.walkingspeed = None
+        self.parent = p  # always a Sidewalk or ZebraCrossing
+        self.walkingtimeleft = None  # used when walking on Road or ZebraCrossing
+        self.justgothere = False  # just got here, not just go there!
+        # ^ used when just arrived at Sidewalk and wants to push button
+        
+        self.path = None
 
-        self.walkingtimeleft = None  # only used when waiting to walk onto sidewalk due to road length
-
-    @staticmethod
-    def decidewalkingspeed():
-        # TODO: figure this out, must be Gaussian random
-        pass
+        self.reactiondelay = None
+        self.reactivity = None
+        # TODO: depending on staticness of above variables,
+        # ^ the method calcwalkingtime() should either be static or not static
+        
+    # @staticmethod
+    # def decidewalkingspeed():
+        # pass
 
 
 def main():
