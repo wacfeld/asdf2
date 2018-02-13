@@ -2,6 +2,7 @@ The layout for the simulation (main.py)
 
 import random, math
 
+
 Classes:
     MindController
         __init__(self, s)
@@ -27,7 +28,8 @@ Classes:
         list roads
         Sidewalk s1, s2, s3, s4
 
-        Road getoppositeroad(r)
+        void onetick(self)
+        Road getoppositeroad(self, r)
 
     Road
         __init__(self, p)
@@ -39,6 +41,10 @@ Classes:
         Light light
         list temp
         float length
+
+        static list rc
+        static list getrc()
+        static decidelength()
 
         void giveroad(self, obj)
         void onetick(self)
@@ -65,6 +71,10 @@ Classes:
         Light pedlight
         Road parentroad
         static? float length
+        
+        boolean buttonpushed
+        
+        void onetick()
 
     Light
         __init__(self, parent)
@@ -72,6 +82,7 @@ Classes:
         char state
         char parenttype
         ZebraCrossing/Road parent
+        float yellowtimeleft
 
     Middle
         __init__(self, parent)
@@ -139,9 +150,13 @@ Classes:
         float walkingspeed
         Sidewalk parent
         bool reacheddest
-        bool iswalkking
-        float waitingtimeleft
+        float walkingtimeleft
+        bool justgothere  # just got here, not just go there!
+        
+        list path
+
         float reactivity
+        float reactiondelay
 
         static float decidewalkingspeed()
         static float calcwalkingtime(length)
@@ -171,13 +186,15 @@ Car/Ped generation:
                 If is <= 0 we then append the ped to Sidewalk.peds of the left sidewalk adjacent to the current Road and reset walkingtimeleft to None
 
 
-Lane.isopen(self, currlane, targetroad):
+Lane.isopen(self, targetroad):
+    # we deal with light colors independently due to issues with yellow lights
     Check targetroad.crossing.occupied, if True, return False
     Check self.crossing.occupied, if True, return False
     Check area of Middle.pathisclear(self, targetroad), if False, return False
     return True
 
 
+# FIXME: needs lots of optimization
 Middle.pathisclear(self, currlane, targetroad):
     Figure out if path should be straight or round
     Figure out which third of targetroad you want to reach, remember as 0, 1, 2 from left to right
@@ -186,7 +203,9 @@ Middle.pathisclear(self, currlane, targetroad):
     If it's a line, make a list of points, each time increasing either the x or y value by 1
     If it's round call Middle.getpath(currlane, targetroad, third)
 
-    Take resulting path and
+    Do magic to get two similar paths except with larger and smaller radii
+    Check if the points in those paths are in Middle.occupiedpoints
+    If not return True, else return False
 
 
 Middle.getpath(self, lane, targetroad, third):
@@ -196,11 +215,13 @@ Middle.getpath(self, lane, targetroad, third):
     Let a1 be clockwise angle (starting from right) from origin to center of lane
     Let a2 be similar for origin to targetroad's third
     Let r be radius (use pythagorean theorem)
-    Let a = a1
-    while a <= a2:
-        Use formula (o1 + r * math.cos(a), o2 + r *  math.sin(a)) to get next point
-        If that point != path[-1], append point to path
-        a += 0.01 (FON)
+
+    Let degrees = a1 * 180  # to convert to degrees
+    Let radians = a1
+    while radians <= a2:
+        Use formula (o1 + r * math.cos(radians), o2 + r *  math.sin(radians)) to get next point
+        degrees += 5  # to improve speed
+        radians = degrees / 180
 
     return path
 
@@ -209,20 +230,49 @@ Stuff inside road:
     Everytime onetick() is called on Road:
         It runs the neural network/whatever decision thing and changes Road.light.state accordingly
         It then calls onetick() on all 3 lanes:
-            The Lane goes through Lane.cars that aren't None and don't have Car.reationdelay = None and does Car.reactiondelay -= 0.1
+            The Lane goes through Lane.cars that aren't None and don't have Car.reactiondelay = None and does Car.reactiondelay -= 0.1
             Then it gets the first Car in Lane.cars
             If not Lane.isopen(targetroad):
-                If Car.reactiondelay == None calculate that based on Car.reactivity
+                Check Road.parent.getoppositeroad().light.state, if 'r', skip next steps
+                If 'y', look at Car.position and Car.speed and choose whether to go through or not
+                If Car.reactiondelay == None set to Car.reactivity
                 If *               * == some integer subtract 0.1
-                *                  * == 0 Do math with Car.position/buffer/acceleration/speed/reactiondelay and figure out how much to accelerate/decelerate and act accordingly
+                *                  * == 0:
+                    Do math with Car.position/buffer/acceleration/speed/reactiondelay and figure out how much to accelerate/decelerate and act accordingly
+
             Else:
             Check if Car.reactiondelay <= 0
                 If True, we start increasing Car.speed based on Car.acceleration
             Then we gradually(?) push the car onto the middle with the same acceleration
-            We then find the next car in Lane.cars and set Car.reactiondelay based on Car.reactivity
+            We then find the next car in Lane.cars and set Car.reactiondelay to Car.reactivity
 
 
 Stuff inside Middle:
     onetick():
         We loop through Middle.cars:
         Use math to predict path of each car
+
+
+Crossing Pedestrians:
+    onetick() is called on Sidewalk()
+    Go through Sidewalk.peds:
+        If Pedestrian.justgothere == True:
+            Set Pedestrian.justgothere = False
+            If Light.state == 'r':
+                Based on Pedestrian.path which crossing it wants to walk through
+                Set ZebraCrossing.buttonpushed = True
+        If Light.state == 'g' or (Light.state == 'y' and Light.yellowtimeleft > FON based on Pedestrian.walkingspeed):
+            If Pedestrian.reactiondelay == None, set equal to Pedestrian.reactivity
+            If Pedestrian.reactiondelay <= 0:
+                Set ZebraCrossing.occupied = True
+                Append Ped to Zebracrossing.peds and removefrom Sidewalk.peds
+                Based on ZebraCrossing.length and Pedestrian.walkingspeed set Pedestrian.walkingtimeleft
+    
+    onetick() is called on ZebraCrossing:
+        Go through self.peds:
+            Do Pedestrian.walkingtimeleft -= 0.1
+            If Pedestrian.walkingtimeleft <= 0:
+                Remove from ZebraCrossing.peds
+                Append to Sidewalk.peds
+                Set Pedestrian.justgothere = True
+                And other stuff

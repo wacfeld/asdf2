@@ -11,12 +11,12 @@ class MindController:
 
     def __init__(self, s):
         self.sidelength = s  # not including Portals
-        self.intersections = [[None] * s for i in range(s)]
+        self.intersections = [[None] * s for _ in range(s)]
         self.initinter(s)
         self.portals = []  # for easy access
         self.ticks = 0  # time for the simulation; 1 tick is 1/10 a "second"
 
-    def decidecolor(light):
+    def decidecolor(self, light):
         pass
 
     def decidedest(self, p):
@@ -68,7 +68,7 @@ class MindController:
         for p in self.portals:
             p.onetick()
 
-        for
+        # for
 
 
 class Intersection:
@@ -97,6 +97,13 @@ class Intersection:
         s2 = Sidewalk(self, self.roads[1], self.roads[2])
         s3 = Sidewalk(self, self.roads[2], self.roads[3])
         s4 = Sidewalk(self, self.roads[3], self.roads[1])
+        self.sidewalks = [s1, s2, s3, s4]
+
+    def onetick(self):
+        pass
+
+    def getoppositeroad(self, r):
+        pass
 
 
 class Road:
@@ -104,6 +111,8 @@ class Road:
     # note that intersections at the edge still have 4 roads (1 or 2 are technically Portals)
 
     def __init__(self, p):
+        self.rc = self.getrc()  # respective capacities
+
         self.left = Lane('l', self, self.rc[0])
         self.forward = Lane('f', self, self.rc[1])
         self.right = Lane('r', self, self.rc[2])
@@ -115,20 +124,25 @@ class Road:
         self.light = Light(self)  # note that lights control the road they belong to, not the opposite!
 
         self.temp = []  # where pedestrians and cars go before being sorted and stuff by onetick()
-        self.length = decidelength()
+        self.length = self.decidelength()
 
-    rc = [5,10,5]  # (FON) respective capacity; how much each lane can hold; should be random
+
 
     @staticmethod
     def decidelength():
+        pass
+
+    @staticmethod
+    def getrc():
         pass
 
     def giveroad(self, obj):  # gets a ped or car from adjacent portal or intersection
         self.temp.append(obj)
 
     def onetick(self):
-        for t in temp:
+        for t in self.temp:
             if type(t) is Car:  # then put it into a lane
+                pass
 
 
 class Lane:
@@ -137,6 +151,9 @@ class Lane:
         self.direction = d  # direction is l, r, or f
         self.parentroad = parent
         self.capacity = c  # (FON) how many cars it can hold; right and left are less, forward is more
+
+    def onetick(self):
+        pass
 
 
 class ZebraCrossing:
@@ -214,17 +231,18 @@ class Portal:  # called Portal because cars/pedestrians start and end here (ther
         # takes at most 1 car and all pedestrians and pushes them into the adjacent road
         c = self.cars.pop(0)
         self.adjroad.giveroad(c)
-        for p in peds:
+        for p in self.peds:
             self.adjroad.giveroad(p)
-        del peds[:]
+        del self.peds[:]
 
     def deletefinished(self):
         for c in self.finished:
-            deleteobj(c)
+            self.deleteobj(c)
 
     def onetick(self):
         if random.random() < Portal.carprob:
             self.createcar()
+
         if random.random() < Portal.pedprob:
             self.createped()
 
@@ -269,7 +287,7 @@ class Pedestrian:
         self.walkingtimeleft = None  # only used when waiting to walk onto sidewalk due to road length
 
     @staticmethod
-    def decidewalkingspeed(self):
+    def decidewalkingspeed():
         # TODO: figure this out, must be Gaussian random
         pass
 
