@@ -151,6 +151,15 @@ class Lane:
         self.parentroad = parent
         self.capacity = c  # (FON) how many cars it can hold; right and left are less, forward is more
 
+    def isopen(self, targetroad):  # checks ZCs, Lights, etc. to see if car car go this way
+        pass
+
+    def calccapacity(self, length):
+        pass
+
+    def isfull(self):
+        pass
+        
     def onetick(self):
         pass
 
@@ -164,14 +173,14 @@ class ZebraCrossing:
         # when a pedestrian is crossing it adds 1 to numberofpedestrians, when it leaves it subtracts 1
         # the crossing checks when numberofpedestrians == 0 and then it becomes not occupied
         self.occupied = False
-        self.numberofpedestrians = 0
-
+        self.peds = []
         self.parentroad = parent
-
+        self.length = None  # FON, probably should be random
         self.pedlight = Light(self)
+        self.buttonpushed = False  # does what those buttons on telephone poles do IRL
 
-    def checkoccupied(self):  # called by pedestrian before and after crossing
-        return not bool(self.numberofpedestrians)
+    def onetick(self):
+        pass
 
 
 class Light:  # applies to traffic and pedestrian lights, since they are effectively the same, except in timing

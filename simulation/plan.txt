@@ -63,6 +63,8 @@ Classes:
         float calccapacity(self, length)
         bool isfull(self)
 
+        void onetick(self):
+
     ZebraCrossing
         __init__(self, parent)
 
@@ -83,6 +85,7 @@ Classes:
         char parenttype
         ZebraCrossing/Road parent
         float yellowtimeleft
+        const float constyellowtime
 
     Middle
         __init__(self, parent)
