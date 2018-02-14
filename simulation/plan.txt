@@ -135,6 +135,7 @@ Classes:
         Portal/Lane/Middle parent
         Portal destination
         list path
+        int ticksfromspawn
 
         # stuff used in Middle
         list coords

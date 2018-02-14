@@ -149,7 +149,8 @@ class Lane:
         self.cars = []  # first in the array are closest to middle of intersection
         self.direction = d  # direction is l, r, or f
         self.parentroad = parent
-        self.capacity = c  # (FON) how many cars it can hold; right and left are less, forward is more
+        self.length = None
+        self.capacity = self.calccapacity(self.length)  # (FON) how many cars it can hold; right and left are less, forward is more
 
     def isopen(self, targetroad):  # checks ZCs, Lights, etc. to see if car car go this way
         pass
@@ -277,8 +278,8 @@ class Portal:  # called Portal because cars/pedestrians start and end here (ther
         self.deletefinished()  # get rid of cars and peds who
         self.releasesome()
 
-    carprob = 0.1  # (FON) probability that a car will spawn in a given tick, similar below
-    pedprob = 0.03  # (FON)
+    carprob = None  # (FON) probability that a car will spawn in a given tick, similar below
+    pedprob = None  # (FON)
 
 
 class Car:
@@ -290,6 +291,7 @@ class Car:
         self.parent = p  # either Portal, Lane, or Middle; this also tells us how it should behave
         self.destination = None  # the portal it wants to get to
         self.path = []  # array of Intersections followed by one Portal, the path to follow to get to self.destination
+        self.ticksfromspawn = 0  # note that this is not seconds, but ticks, so always integer value
 
         # these are only used when in the middle of an intersection
         self.coords = [None, None]  # (0,0) is center of Intersection, x moves right, y moves up
