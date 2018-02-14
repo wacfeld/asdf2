@@ -110,13 +110,14 @@ Classes:
         void onetick()
 
     Portal
-        __init__(self, road, pos)
+        __init__(self, road, pos, p)
 
         list cars
         list peds
         Road adjroad
         list finished
         int position
+        MindController parent
 
         static float carprob
         static float pedprob
@@ -154,6 +155,7 @@ Classes:
     Pedestrian
         __init__(self, p)
 
+        int tickssincespawn
         float walkingspeed
         Sidewalk/ZebraCrossing parent
         float walkingtimeleft
@@ -171,6 +173,7 @@ Classes:
 General:
 A tick is 1/10 a second
 Every time we go through we immediately decrease all reaction time/waiting time variables by 0.1 (one tick length in seconds)
+Be careful not to do Car.tickssincespawn twice in the same tick! Same with pedestrians
 
 
 Car/Ped generation:

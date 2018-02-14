@@ -3,6 +3,7 @@ import math
 
 # TODO: Figure Out Numbers for stuff labeled FON
 # TODO: change stuff for ticks from 1/2 second to 1/10 second
+# TODO: Make ticks timesd by 10
 
 class MindController:
     # this controls all the interactions of the simulation, aside from the traffic lights
@@ -55,7 +56,7 @@ class MindController:
                         road = inter.roads[0] if a < y else inter.roads[1] if x < b else inter.roads[2] if y < a else inter.roads[3]
 
                         portalpos = coords.index([a, b])
-                        portal = Portal(road, portalpos)
+                        portal = Portal(road, portalpos, self)
                         inter.adjacents[portalpos] = portal
                         self.portals.append(portal)
                     else:
@@ -136,7 +137,12 @@ class Road:
         pass
 
     def giveroad(self, obj):  # gets a ped or car from adjacent portal or intersection
+        # named this way to avoid confusion - Road is being given object
         self.temp.append(obj)
+        obj.parent = self
+        if type(obj) is Car:
+            obj.position = self.length - obj.length/2 - obj.buffer
+# LPE (last place edited)        
 
     def onetick(self):
         for t in self.temp:
@@ -234,16 +240,19 @@ class Portal:  # called Portal because cars/pedestrians start and end here (ther
     # attaches to road of intersection
     # cars coming from the intersection go directly from Middle to Portal
 
-    def __init__(self, road, pos):
+    def __init__(self, road, pos, p):
         self.cars = []
         self.peds = []
         self.adjroad = road  # the road it feeds into'
         self.finished = []  # cars and peds who are done
         self.position = pos  # 0, 1, 2, 3 -> up, right, down, left, see MindController.decidedest()
+        self.parent = p
+
 
     # TODO: should we merge cars and peds into one list (as well as the functions)?
     def createcar(self):
         newcar = Car(self)
+
         self.cars.append(newcar)
         return newcar  # gives car to MindController, the one that calls the function and decides the car's destination
 
@@ -265,6 +274,7 @@ class Portal:  # called Portal because cars/pedestrians start and end here (ther
         del self.peds[:]
 
     def deletefinished(self):
+        self.parent.numgottenthrough += len(self.finished)
         for c in self.finished:
             self.deleteobj(c)
 
@@ -289,8 +299,9 @@ class Car:
         # when turning cars follow a rough circle
 
         self.parent = p  # either Portal, Lane, or Middle; this also tells us how it should behave
-        self.destination = None  # the portal it wants to get to
-        self.path = []  # array of Intersections followed by one Portal, the path to follow to get to self.destination
+        bigbrother = self.parent.parent
+        self.destination = bigbrother.decidedest(self.parent)  # the portal it wants to get to
+        self.path = bigbrother.pathfind(self.parent, self.destination)  # array of Intersections followed by one Portal, the path to follow to get to self.destination
         self.ticksfromspawn = 0  # note that this is not seconds, but ticks, so always integer value
 
         # these are only used when in the middle of an intersection
@@ -323,14 +334,17 @@ class Pedestrian:
     # then after x time goes to the other sidwalk and unoccupies the crossing
 
     def __init__(self, p):
-        self.walkingspeed = None
+        self.tickssincespawn = 0  # see similar for Car
+        self.walkingspeed = None  # FON or make static
         self.parent = p  # always a Sidewalk or ZebraCrossing
         self.walkingtimeleft = None  # used when walking on Road or ZebraCrossing
         self.justgothere = False  # just got here, not just go there!
         # ^ used when just arrived at Sidewalk and wants to push button
-        
-        self.path = None
 
+        bigbrother = self.parent.parent
+        self.destination = bigbrother.decidedest(self.parent)
+        self.path = bigbrother.pathfind(self.parent, self.destination)
+        
         self.reactiondelay = None
         self.reactivity = None
         # TODO: depending on staticness of above variables,
