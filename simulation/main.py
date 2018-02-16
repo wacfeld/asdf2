@@ -108,7 +108,7 @@ class Intersection:
 
 class Road:
     # FON: number of lanes - 2 or 3?
-    # note that intersections at the edge still have 4 roads (1 or 2 are technically Portals)
+    # note that intersections at the edge still have 4 roads (0 or 1 or 2 are technically Portals)
 
     def __init__(self, p):
         self.rc = self.getrc()  # respective capacities
@@ -141,7 +141,7 @@ class Road:
         self.temp.append(obj)
         obj.parent = self
         if type(obj) is Car:
-            obj.position = self.length - obj.length/2 - obj.buffer
+            obj.position = self.length - obj.length/2 - obj.varbuffer
 # LPE (last place edited)        
 
     def onetick(self):
@@ -317,7 +317,7 @@ class Car:
         self.length = None  # from bumper to bumper
         self.speed = None  # pick a unit, something/tick
         self.acceleration = None  # also pick a unit
-        self.buffer = None  # keeps cars from getting too close
+        self.varbuffer = None  # keeps cars from getting too close
         self.reactiondelay = None  # how long until driver should react to any incident
         self.reactivity = None  # initial value for reactiondelay
 
