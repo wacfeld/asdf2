@@ -142,7 +142,7 @@ class Road:
         obj.parent = self
         if type(obj) is Car:
             obj.position = self.length - obj.length/2 - obj.varbuffer
-# LPE (last place edited)        
+
 
     def onetick(self):
         for t in self.temp:
@@ -314,12 +314,17 @@ class Car:
         # TODO: decide if certain car values (reaction speed, etc.) are random? If not, make static
         # ^ similar for Pedestrians
         self.position = None  # location on road, scalar
-        self.length = None  # from bumper to bumper
+        self.length = 449.326  # from bumper to bumper, centimeters
+        # ^ got from Honda Civic
         self.speed = None  # pick a unit, something/tick
         self.acceleration = None  # also pick a unit
         self.varbuffer = None  # keeps cars from getting too close
         self.reactiondelay = None  # how long until driver should react to any incident
         self.reactivity = None  # initial value for reactiondelay
+
+    def calcbuffer(self):  # based on self.varbuffer and self.speed calculate real buffer
+        # buffer should be half of speed in mph, converted to meters
+        # this way half + half of each car = correct buffer
 
     # @staticmethod
     # def deciderandvalues():
