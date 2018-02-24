@@ -129,6 +129,13 @@ class Intersection:
 
         return mapping[[facing,ad]]
 
+    @staticmethod
+    def distfromnextcar(pos1, path1, point2):  # get distance in path of car 1 (in lane) to car 2 (in middle)
+        # pos1 is position of car in lane
+        # path1 is array of points which car in lane follows
+        # point2 is location of car in middle
+        pass
+
     def onetick(self):
         pass
 
@@ -168,6 +175,7 @@ class Road:
     def getlens():  # length in meters of all three lanes, random
         pass
 
+    # TODO: make the car figure out the next Lane to go to while in the previous intersection
     def offerroad(self, obj):  # something tries to give road a ped or car from adjacent portal or intersection
         # if failed the Portal/Midle keeps it
         # named this way to avoid confusion - Road is being given object
@@ -253,16 +261,34 @@ class Lane:
         for c in self.cars:
             c.ticksfromspawn += 1
             if c.reactiondelay != None:  # then it must be about to stop or start
-                if c.reactiondelay <= 0:  # then react based on c.howfartogo
-                    c.acceleration += c.howfartogo / 10  # div 10 because it's just one tick
+                if c.reactiondelay <= 0:  # then react based on c.howmuchtoaccelerate
+                    c.acceleration += c.howmuchtoaccelerate / 10  # div 10 because it's just one tick
                 else:
                     c.reactiondelay -= 1
 
             # check surroundings of car
             if self.cars.index(c) == 0:  # then check Middle and ZC
-                if self.parentroad.crossing.occupied or self.parentroad.parent.middle.pathis:  # then react
+                if self.parentroad.crossing.occupied:
+                    distfromzc = c.position - c.minbuffer  # minbuffer because when it gets there the car's speed will be 0
+                    c.howmuchtoaccelerate = Lane.calcaccel(c.speed, distfromzc, Car.weight)  # how much to DEcelerate, in this case
+                    c.reactiondelay = c.reactivity
+
+                else:
+                    nextcar = self.parentroad.parent.middle.nextcarinpath()
+                    if nextcar != None:  # if None then the path is clear, we check the Lane in the next Intersection
+                        disttocar = Intersection.distfromnextcar(c.position, c.pointstooccupy, nextcar.coords)
+                        # LPE, last place edited
+                        # now we take disttocar and figure out how much to accel/decelerate
+                        # if so se the variables, if too far away, do nothing
+                        # outside of if, make else, for nextcar == None, and check next Intersection in c.path,
+                        # check the next lane and see if there is a car less than one car's length + buffer away from Middlem
+                        # if so, figure how much to accel/decelerate
+                        # if no cars in the way, do something still based off next car, probably in the next Lane in next Intersection, and decel/accelerate
 
 
+    @staticmethod
+    def calcaccel(speed, distfromobs, weight):
+        pass
 
 class ZebraCrossing:
     # where pedestrians cross; pedestrians do not move, but take x time to cross
@@ -303,12 +329,15 @@ class Middle:
         self.squares = [[None] * self.sidelength for i in range(self.sidelength)]
         self.parent = parent
         self.cars = []
-        self.occupiedpoints = []  # matrix of points that cars or their buffer occupy
+        self.occupiedpoints = []  # array of points that cars or their buffer occupy at this instant
+        self.tobeoccupied = []  # matrix of points that cars are going to occupy
+        # ^ used with Car.position to decide right of way
 
     sidelength = 6 * 1000  # (FON) must be even number
 
-    def howclearispath(self, lane, targetroad):  # returns how clear the paths is, i.e. how far you can drive before hitting something
+    def nextcarinpath(self, path):
         pass
+
 
     def getpath(self, lane, targetroad, third):
         pass
@@ -410,30 +439,38 @@ class Car:
         self.ticksfromspawn = 0  # note that this is not seconds, but ticks, so always integer value
         # ^ TODO: add stuff to increment this
 
-        # these are only used when in the middle of an intersection
-        self.coords = [None, None]  # (0,0) is center of Intersection, x moves right, y moves up
-        self.motionvector = [None, None]  # where it moves next in the Intersection; might change to direction and angle
-        self.occupiedindex = None  # index of points this car occupies, from Middle.occupiedpoints
 
-        # stuff used in general
+        # these are used in conjunction with similar fields in Middle
+
+        # stuff used in Lane
         # FON all of this, probably research
         # TODO: decide if certain car values (reaction speed, etc.) are random? If not, make static
         # ^ similar for Pedestrians
-        self.position = None  # location on road, scalar
-        self.length = 449.326  # from bumper to bumper, centimeters
         # ^ got from Honda Civic
-        self.minb = self.length/2 + 0.5  # FON
+
+        # used when in the middle of an intersection
+        self.occupiedindex = None  # array of points this car occupies, from Middle.occupiedpoints
+        self.pointstooccupy = None  # array of points the car will occupy, also used as path
+        self.coords = [None, None]  # (0,0) is center of Intersection, x moves right, y moves up
+        self.motionvector = [None, None]  # where it moves next in the Intersection; might change to direction and angle
+        self.lanetoenter = None  # used in Road.offerroad()
+
+        # used in lane
+        self.position = None  # location on road, scalar
+        # ^ used with self.reactivity
 
         self.speed = None  # m/s
         self.acceleration = None  # m/s^2
-        self.varbuffer = None  # keeps cars from getting too close
+        self.howmuchtoaccelerate = None  # float, how much to accelerate/decelerate, m/s^2 (see reactiondelay)
         self.reactiondelay = None  # how long until driver should react to any incident, measured in ticks
+
+        # constant stuff
         self.reactivity = None  # initial value for reactiondelay
-        self.howfartogo = None  # float, how much to accelerate/decelerate, m/s^2 (see reactiondelay)
+        self.minb = self.length/2 + 0.5  # FON
+        self.length = 449.326  # from bumper to bumper, centimeters
 
-        self.lanetoenter = None  # used in Road.offerroad()
 
-    def calcbuffer(self):  # based on self.varbuffer and self.speed calculate real buffer
+    def calcbuffer(self):  # calculate real buffer based on speed
         # buffer should be half of speed in mph, converted to meters
         # this way half + half of each car = correct buffer
         mph = self.speed * 1.125  # divide by 1600, multiply by 3600, divide by 2
