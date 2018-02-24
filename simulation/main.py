@@ -4,6 +4,7 @@ import math
 # TODO: Figure Out Numbers for stuff labeled FON
 # TODO: change stuff for ticks from 1/2 second to 1/10 second
 # TODO: Make ticks timesd by 10
+# TODO: add memoization to speed things up
 
 class MindController:
     # this controls all the interactions of the simulation, aside from the traffic lights
@@ -75,7 +76,7 @@ class MindController:
             return 1
 
     def onetick(self):  # does everything that happens in a single tick
-        # (almost?) every has has a similar function which is called by this one
+        # (almost?) every object has has a similar function which is called by this one
         # spawn and release cars, make everything move forwards, increments waiting counters, etc.
         for p in self.portals:
             p.onetick()
@@ -104,19 +105,27 @@ class Intersection:
             newroad = Road(self, i)
             self.roads.append(newroad)
 
+        r1, r2, r3, r4 = self.roads[0], self.roads[1], self.roads[2], self.roads[3]  # for ease of use
+
         # set the crossings corresponding to sidewalks
-        s1 = Sidewalk(self, self.roads[0], self.roads[1])
-        s2 = Sidewalk(self, self.roads[1], self.roads[2])
-        s3 = Sidewalk(self, self.roads[2], self.roads[3])
-        s4 = Sidewalk(self, self.roads[3], self.roads[1])
+        s1 = Sidewalk(self, r1.crossing, r2.crossing)
+        s2 = Sidewalk(self, r2.crossing, r3.crossing)
+        s3 = Sidewalk(self, r3.crossing, r4.crossing)
+        s4 = Sidewalk(self, r4.crossing, r1.crossing)
         self.sidewalks = [s1, s2, s3, s4]
+
+        # set the road's sidewalk attributes, for Intersection.gettargetsidewalk()
+        r1.sw1, r1.sw2 = s4, s1
+        r2.sw2, r2.sw2 = s1, s2
+        r3.sw2, r3.sw2 = s2, s3
+        r4.sw2, r4.sw2 = s3, s4
 
     @staticmethod
     def getrelativedirection(facing, ad):
         # facing is the orientation of the road
         # ad is the absolute direction the car should move
         mapping = {[0,2]:1, [1,3]:1, [2,0]:1, [0,3]:2, [1:0]:2, [2,1]:2, [3,2]:2, [0,1]:0, [1,2]:0, \
-          [2,3]:0, [3,0]:0}
+          [2,3]:0, [3,0]:0}  # left, forward, right = 0, 1, 2
 
         return mapping[[facing,ad]]
 
@@ -139,16 +148,17 @@ class Road:
         self.right = Lane(2, self, self.rc[2])
         self.lanes = [self.left, self.forward, self.right]
 
-        self.absolutedir = ad
+        self.absolutedir = ad  # the way the road is facing based off the whole grid
         self.parent = p
 
         self.crossing = ZebraCrossing(self)  # placed here for easy access from cars
+        self.sw1 = None  # initialized by Intersection after Sidewalks are made
+        self.sw2 = None  # ordered RTL, facing Middle
+        self.pedwaiting = []  # pedestrians wait before moving to sidewalk
+
         self.light = Light(self)  # note that lights control the road they belong to, not the opposite!
 
-        self.temp = []  # where pedestrians and cars go before being sorted and stuff by onetick()
-        self.length = self.decidelength()
-
-
+        self.length = self.decidelength()  # meters
 
     @staticmethod
     def decidelength():
@@ -158,19 +168,21 @@ class Road:
     def getlens():  # length in meters of all three lanes, random
         pass
 
-    def giveroad(self, obj):  # gets a ped or car from adjacent portal or intersection
+    def offerroad(self, obj):  # something tries to give road a ped or car from adjacent portal or intersection
+        # if failed the Portal/Midle keeps it
         # named this way to avoid confusion - Road is being given object
         obj.parent = self
         if type(obj) is Car:
-            if obj.lanetoenter == None:  # then figure that out
+            if obj.lanetoenter == None:  # then figure that out, this is kept if the car is rejected
                 currgc = self.parent.gridcoords
-                nextgc = obj.path[1].gridcoords  # intersection after this one
+                nextgc = obj.path[1].gridcoords  # intersection after this one in Pedestrian's path
                 del obj.path[0]
-                absolutedirection = MindController.directiontotake(currgc, nextgc)  # up, down, left, right
-                reldir = getrelativedirection(self.ad, absolutedirection)
+                absolutedirection = MindController.directiontotake(currgc, nextgc)  # up, right, down, left -> 0, 1, 2, 3
+                reldir = Intersection.getrelativedirection(self.ad, absolutedirection)
                 obj.lanetoenter = self.lanes[reldir]
 
             if obj.lanetoenter.carcanenter():
+                # set the variables in Car
                 obj.parent = obj.lanetoenter
                 obj.position = obj.lanetoenter.length  # very end of the lane
                 obj.lanetoenter = None  # reset for later
@@ -178,19 +190,46 @@ class Road:
                 obj.speed = None  # FON
                 obj.acceleration = None # ^
 
-
-            else:
-                temp.append(obj)
-
-
+                return True  # operation succeeded, car entered
 
         if type(obj) is Pedestrian:
-            pass
+            currgc = self.parent.gridcoords
+            nextgc = obj.path[1].gridcoords
+            del obj.path[0]  # we are done with this
+            absolutedirection = MindController.directiontotake(currgc, nextgc)
+
+            reldir = Intersection.getrelativedirection(self.ad, absolutedirection)
+
+            if reldir == 0:
+                obj.currtarsw = self.sw2
+            if reldir == 1:
+                obj.currtarsw = self.sw2  # Ontario recommends you walk on the left, for some reason
+            if reldir == 2:
+                obj.currtarsw = self.sw1
+
+            obj.parent = self
+            obj.bigbrother = self.parent
+            obj.waitingtimeleft = 10 * obj.walkingspeed / self.length  # * 10 to convert to ticks
+
+            self.pedwaiting.append(obj)
+
+            return True  # operation succeeded
+
+        return False
 
     def onetick(self):
-        for t in self.temp:
-            if type(t) is Car:  # then put it into a lane
-                pass
+        # call onetick() on all lanes and decrease Pedestrian wait time
+        for l in self.lanes:
+            l.onetick()
+
+        for p in self.pedwaiting:
+            p.ticksfromspawn += 1
+            p.walkingtimeleft -= 1
+            if p.walkingtimeleft <= 0:  # then move it to currtarsw
+                p.parent = p.currtarsw
+                p.currtarsw.peds.append(p)
+                p.currtarsw = None  # have to decide this later
+                p.justgothere = True
 
 
 class Lane:
@@ -203,14 +242,26 @@ class Lane:
     def isopen(self, targetroad):  # checks ZCs, Lights, etc. to see if car car go this way
         pass
 
-    def carcanenter(self):  # if a car from temp can come here
+    def carcanenter(self):  # if a car in Road.offerroad()
         lastcar = self.cars[-1]
         if lastcar.position + lastcar.calcbuffer() > self.length:
             return False
         return True
 
     def onetick(self):
-        pass
+        # go through cars, based on reaction delays, speeds, etc. move them accordingly
+        for c in self.cars:
+            c.ticksfromspawn += 1
+            if c.reactiondelay != None:  # then it must be about to stop or start
+                if c.reactiondelay <= 0:  # then react based on c.howfartogo
+                    c.acceleration += c.howfartogo / 10  # div 10 because it's just one tick
+                else:
+                    c.reactiondelay -= 1
+
+            # check surroundings of car
+            if self.cars.index(c) == 0:  # then check Middle and ZC
+                if self.parentroad.crossing.occupied or self.parentroad.parent.middle.pathis:  # then react
+
 
 
 class ZebraCrossing:
@@ -256,7 +307,7 @@ class Middle:
 
     sidelength = 6 * 1000  # (FON) must be even number
 
-    def pathisclear(self, lane, targetroad):
+    def howclearispath(self, lane, targetroad):  # returns how clear the paths is, i.e. how far you can drive before hitting something
         pass
 
     def getpath(self, lane, targetroad, third):
@@ -273,6 +324,10 @@ class Sidewalk:
         self.parent = p
         self.peds = []
         self.crossing1, self.crossing2 = c1, c2
+
+        # roads are from right to left, Sidewalk's perspective facing the Middle
+        self.road1 = crossing1.parentroad
+        self.road2 = crossing2.parentroad
 
     def onetick(self):
         pass
@@ -310,10 +365,18 @@ class Portal:  # called Portal because cars/pedestrians start and end here (ther
     def releasesome(self):
         # takes at most 1 car and all pedestrians and pushes them into the adjacent road
         c = self.cars.pop(0)
-        self.adjroad.giveroad(c)
-        for p in self.peds:
-            self.adjroad.giveroad(p)
-        del self.peds[:]
+        success = self.adjroad.offerroad(c)  # if False the Lane must be full
+        if not success:
+            self.cars.append(c)
+
+        # now the pedestrians
+        succeeded = []  # list of stuff to remove after the next for loop
+        for i in range(len(self.peds)):
+            success = self.adjroad.offerroad(self.peds[i])
+            if success:
+                succeeded.append(self.peds[i])
+        self.peds = list(succeeded)  # FIXME this area might break because of pointers
+        del succeeded
 
     def deletefinished(self):
         self.parent.numgottenthrough += len(self.finished)
@@ -364,10 +427,11 @@ class Car:
         self.speed = None  # m/s
         self.acceleration = None  # m/s^2
         self.varbuffer = None  # keeps cars from getting too close
-        self.reactiondelay = None  # how long until driver should react to any incident
+        self.reactiondelay = None  # how long until driver should react to any incident, measured in ticks
         self.reactivity = None  # initial value for reactiondelay
+        self.howfartogo = None  # float, how much to accelerate/decelerate, m/s^2 (see reactiondelay)
 
-        self.lanetoenter = None  # used while in Road.temp
+        self.lanetoenter = None  # used in Road.offerroad()
 
     def calcbuffer(self):  # based on self.varbuffer and self.speed calculate real buffer
         # buffer should be half of speed in mph, converted to meters
@@ -391,25 +455,21 @@ class Pedestrian:
     # then after x time goes to the other sidwalk and unoccupies the crossing
 
     def __init__(self, p):
-        self.tickssincespawn = 0  # see similar for Car
-        self.walkingspeed = None  # FON or make static
+        self.ticksfromspawn = 0  # see similar for Car
+        self.walkingspeed = None  # FON or make static, m/s
         self.parent = p  # always a Sidewalk or ZebraCrossing
-        self.walkingtimeleft = None  # used when walking on Road or ZebraCrossing
+        self.walkingtimeleft = Pedestrian.decidewalkingspeed() # used when walking on Road or ZebraCrossing, unit seconds
         self.justgothere = False  # just got here, not just go there!
         # ^ used when just arrived at Sidewalk and wants to push button
 
         bigbrother = self.parent.parent
         self.destination = bigbrother.decidedest(self.parent)
         self.path = bigbrother.pathfind(self.parent, self.destination)
+        self.currtarsw = None  # the current sidewalk they want to walk to
 
-        self.reactiondelay = None
-        self.reactivity = None
-        # TODO: depending on staticness of above variables,
-        # ^ the method calcwalkingtime() should either be static or not static
-
-    # @staticmethod
-    # def decidewalkingspeed():
-        # pass
+    @staticmethod
+    def decidewalkingspeed():
+        pass
 
 
 def main():
