@@ -8,6 +8,12 @@ import asides, concrete, entities
 # TODO: Make ticks timesd by 10
 # TODO: add memoization to speed things up
 
+# A few unit definitions:
+# a tick is 1/10 a second
+# speed is measured in m/s, acceleration in m/s^2
+# distance is measured in m
+# time increments by 0.1 s, distance by 0.1 m, similar for speed and acceleration
+
 
 def main():
     print('Program start')
