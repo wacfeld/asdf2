@@ -1,0 +1,287 @@
+The layout for the simulation (main.py)
+
+import random, math
+
+
+Classes:
+    MindController
+        __init__(self, s)
+
+        int sidelength
+        matrix intersections
+        list portals
+        int ticks
+
+        void initinter(self, s)
+        Portal decidedest(self, p)
+        list pathfind(self, origin, dest)
+        void? onetick(self)
+
+        static char decidelightcolor(light)
+
+    Intersection
+        __init__(self, gc)
+
+        list adjacents
+        Middle middle
+        list gridcoords
+        list roads
+        Sidewalk s1, s2, s3, s4
+
+        void onetick(self)
+        Road getoppositeroad(self, r)
+
+    Road
+        __init__(self, p)
+
+        Lane left, forward, right
+        list lanes
+        Intersection parent
+        ZebraCrossing crossing
+        Light light
+        list temp
+        float length
+
+        static list rc
+        static list getrc()
+        static decidelength()
+
+        void giveroad(self, obj)
+        void onetick(self)
+
+    Lane
+        __init__(self, d, parent, c)
+
+        list cars
+        char direction
+        Road parentroad
+
+        float length
+        int capacity
+
+        bool isopen(self, targetroad)  checks ZebraCrossing and traffic light
+        float calccapacity(self, length)
+        bool isfull(self)
+
+        void onetick(self):
+
+    ZebraCrossing
+        __init__(self, parent)
+
+        bool occupied
+        list peds
+        Light pedlight
+        Road parentroad
+        static? float length
+        
+        boolean buttonpushed
+        
+        void onetick()
+
+    Light
+        __init__(self, parent)
+
+        char state
+        char parenttype
+        ZebraCrossing/Road parent
+        float yellowtimeleft
+        const float constyellowtime
+
+    Middle
+        __init__(self, parent)
+
+        static float sidelength  # some multiple of 6
+        Intersection parent
+        list cars
+        matrix occupiedpoints
+
+        bool pathisclear(self, lane, targetroad)
+        2xn matrix getpath(self, lane, targetroad, third)
+
+        void onetick()
+
+    Sidewalk
+        __init__(self, p, c1, c2)
+
+        Intersection parent
+        list peds
+        ZebraCrossing crossing1, crossing2
+    
+        void onetick()
+
+    Portal
+        __init__(self, road, pos, p)
+
+        list cars
+        list peds
+        Road adjroad
+        list finished
+        int position
+        MindController parent
+
+        static float carprob
+        static float pedprob
+
+        void createcar(self)
+        void createped(self)
+        void deleteobj(self, c)
+        void releasesome(self)
+        void deletefinished(self)
+        void onetick(self)
+
+    Car
+        __init__(self, p)
+
+        # general facts
+        Portal/Lane/Middle parent
+        Portal destination
+        list path
+        int ticksfromspawn
+
+        # stuff used in Middle
+        list coords
+        list motionvector
+        int occupiedindex  # see Middle
+
+        # stuff used in general
+        float position
+        float length
+        float speed
+        float acceleration
+        float reactivity
+        float reactiondelay
+        static float buffer
+
+    Pedestrian
+        __init__(self, p)
+
+        int tickssincespawn
+        float walkingspeed
+        Sidewalk/ZebraCrossing parent
+        float walkingtimeleft
+        bool justgothere  # just got here, not just go there!
+        
+        list path
+
+        float reactivity
+        float reactiondelay
+
+        static float decidewalkingspeed()
+        static float calcwalkingtime(length)
+
+
+General:
+A tick is 1/10 a second
+Every time we go through we immediately decrease all reaction time/waiting time variables by 0.1 (one tick length in seconds)
+Be careful not to do Car.tickssincespawn twice in the same tick! Same with pedestrians
+
+
+Car/Ped generation:
+    Every tick MindController calls onetick() on all Portal Classes
+    The Portals decide based on Portal.carprob/pedprob whether to create a new Car and/or Pedestrian
+        If one does, a Car and/or Pedestrian is made inside the Portal
+        The destination(s) is/are decided as another portal with different field "position", which is 0, 1, 2, 3
+        This way cars and people behave realistically
+
+    Then the cars/peds are given to the "temp" field of the adjacent road
+    The MindController then calls onetick() on the Roads
+        The Roads go through their "temp" field and sort the cars and pedestrians
+            If it is a Car then it looks at the first Intersection in Car.path and figures out if it's up, down, left, right based on Intersection.gridcoords
+                Then checks if Lane.isfull(), if False, then sets Car.position, changes lots of fields, and places in Lane
+                If True, then leaves Car in Road.temp
+            If it is a Pedestrian then it checks Pedestrian.walkingtimeleft
+                If it is > 0 we leave the Ped in Road.temp and decrease walkingtimeeft by a 0.1 (1 tick)
+                If it is None, then we get Road.length and get walkingtimeleft directly proportional to that, and do nothing else
+                If is <= 0 we then append the ped to Sidewalk.peds of the left sidewalk adjacent to the current Road and reset walkingtimeleft to None
+
+
+Lane.isopen(self, targetroad):
+    # we deal with light colors independently due to issues with yellow lights
+    Check targetroad.crossing.occupied, if True, return False
+    Check self.crossing.occupied, if True, return False
+    Check area of Middle.pathisclear(self, targetroad), if False, return False
+    return True
+
+
+# FIXME: needs lots of optimization
+Middle.pathisclear(self, currlane, targetroad):
+    Figure out if path should be straight or round
+    Figure out which third of targetroad you want to reach, remember as 0, 1, 2 from left to right
+        (0 if turning left, 1 if going forward, 2 if turning right)
+
+    If it's a line, make a list of points, each time increasing either the x or y value by 1
+    If it's round call Middle.getpath(currlane, targetroad, third)
+
+    Do magic to get two similar paths except with larger and smaller radii
+    Check if the points in those paths are in Middle.occupiedpoints
+    If not return True, else return False
+
+
+Middle.getpath(self, lane, targetroad, third):
+    Create list path
+    Calculate the "origin" of the circle, coords with values not in the Middle
+    Let (o1,o2) be the origin
+    Let a1 be clockwise angle (starting from right) from origin to center of lane
+    Let a2 be similar for origin to targetroad's third
+    Let r be radius (use pythagorean theorem)
+
+    Let degrees = a1 * 180  # to convert to degrees
+    Let radians = a1
+    while radians <= a2:
+        Use formula (o1 + r * math.cos(radians), o2 + r *  math.sin(radians)) to get next point
+        degrees += 5  # to improve speed
+        radians = degrees / 180
+
+    return path
+
+
+Stuff inside road:
+    Everytime onetick() is called on Road:
+        It runs the neural network/whatever decision thing and changes Road.light.state accordingly
+        It then calls onetick() on all 3 lanes:
+            The Lane goes through Lane.cars that aren't None and don't have Car.reactiondelay = None and does Car.reactiondelay -= 0.1
+            Then it gets the first Car in Lane.cars
+            If not Lane.isopen(targetroad):
+                Check Road.parent.getoppositeroad().light.state, if 'r', skip next steps
+                If 'y', look at Car.position and Car.speed and choose whether to go through or not
+                If Car.reactiondelay == None set to Car.reactivity
+                If *               * == some integer subtract 0.1
+                *                  * == 0:
+                    Do math with Car.position/buffer/acceleration/speed/reactiondelay and figure out how much to accelerate/decelerate and act accordingly
+
+            Else:
+            Check if Car.reactiondelay <= 0
+                If True, we start increasing Car.speed based on Car.acceleration
+            Then we gradually(?) push the car onto the middle with the same acceleration
+            We then find the next car in Lane.cars and set Car.reactiondelay to Car.reactivity
+
+
+Stuff inside Middle:
+    onetick():
+        We loop through Middle.cars:
+        Use math to predict path of each car
+
+
+Crossing Pedestrians:
+    onetick() is called on Sidewalk()
+    Go through Sidewalk.peds:
+        If Pedestrian.justgothere == True:
+            Set Pedestrian.justgothere = False
+            If Light.state == 'r':
+                Based on Pedestrian.path which crossing it wants to walk through
+                Set ZebraCrossing.buttonpushed = True
+        If Light.state == 'g' or (Light.state == 'y' and Light.yellowtimeleft > FON based on Pedestrian.walkingspeed):
+            If Pedestrian.reactiondelay == None, set equal to Pedestrian.reactivity
+            If Pedestrian.reactiondelay <= 0:
+                Set ZebraCrossing.occupied = True
+                Append Ped to Zebracrossing.peds and removefrom Sidewalk.peds
+                Based on ZebraCrossing.length and Pedestrian.walkingspeed set Pedestrian.walkingtimeleft
+    
+    onetick() is called on ZebraCrossing:
+        Go through self.peds:
+            Do Pedestrian.walkingtimeleft -= 0.1
+            If Pedestrian.walkingtimeleft <= 0:
+                Remove from ZebraCrossing.peds
+                Append to Sidewalk.peds
+                Set Pedestrian.justgothere = True
+                And other stuff
