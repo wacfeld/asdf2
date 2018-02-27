@@ -26,6 +26,7 @@ class ZebraCrossing:
 class Light:  # applies to traffic and pedestrian lights, since they are effectively the same, except in timing
     def __init__(self, parent):  # will figure out parenttype on its own
         self.state = 2  # same characters for pedestrian lights, in the matching which makes sense
+        # ^ 0 is green, 1 is yellow, 2 is red
         self.parenttype = 'z' if type(parent) is ZebraCrossing else 'r'
         self.parent = parent  # can be road or zebra crossing
 
@@ -147,7 +148,7 @@ class MindController:
     def initinter(self, s):
         for y in range(s):  # y goes top to bottom
             for x in range(s):  # x goes left to right
-                self.intersections[y][x] = Intersection([x,y])
+                self.intersections[y][x] = Intersection([x,y], self)
 
         # need to do this twice (^) to set the adjacent property
         for y in range(s):

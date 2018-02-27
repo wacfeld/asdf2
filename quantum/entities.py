@@ -33,18 +33,19 @@ class Car:
         self.lanetoenter = None  # used in Road.offerroad()
 
         # used in lane
-        self.position = None  # location on road, scalar
+        self.position = None  # location on road, scalar, meters
+        self.goingthroughyellow = None  # so that a car that is stopping at yellow doesn't start up again
         # ^ used with self.reactivity
 
-        self.speed = None  # m/s, always multiple of 5
-        self.acceleration = None  # m/s^2
+        self.speed = None  # m/s, always multiple of 2?
+        self.acceleration = None  # m/s^2, TODO: redundant?
         self.howmuchtoaccelerate = None  # float, how much to accelerate/decelerate, m/s^2 (see reactiondelay)
         self.reactiondelay = None  # can be 0, 1, 2, 3, in ticks
         # constant stuff
         self.minb = self.length/2 + 0.5  # FON
         self.length = 449.326  # from bumper to bumper, centimeters
 
-    reactivity = None  # initial value for reactiondelay
+    reactivity = 3 # ticks, initial value for reactiondelay
 
     def calcbuffer(self):  # calculate real buffer based on speed
         # buffer should be half of speed in mph, converted to meters
@@ -54,6 +55,12 @@ class Car:
         b = mph + self.length / 2  # car is included in this calculation
         return mph if mph > self.minb else self.minb  # so that cars don't get too close when speed is 0
         # ^ FON
+
+    def setdecelspeed(self):
+        if self.position > 0.5:
+            self.speed = self.position  # easiest way I can think of to get accurate speed change
+        else:  # so we don't get the arrow paradox, because that would be bad
+            self.speed, self.position = 0, 0
 
     # @staticmethod
     # def deciderandvalues():

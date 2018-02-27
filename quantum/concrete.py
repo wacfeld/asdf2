@@ -11,10 +11,11 @@ class Intersection:
     # whichroads is a string of 4 1s and 0s telling you what roads are active, going clockwise
     # note that an inactive road is not necessarily an edge road, since the edges typically have roads for the portals
     # adj always is a tuple of 4 since if it's on the edge it has portals
-    def __init__(self, gc):
+    def __init__(self, gc, p):
         self.adjacents = [None] * 4  # intersections/portals adjacent to this intersection
         self.middle = Middle(self)
 
+        self.parent = p
         self.gridcoords = gc  # used by MindController.pathfind() to figure out where it's located on the grid
 
         # initiates roads
@@ -165,6 +166,7 @@ class Lane:
         self.cars = []  # first in the array are closest to middle of intersection
         self.direction = d  # direction is l, r, or f
         self.parentroad = parent
+        self.bigbrother = self.parentroad.parent
         self.length = c
 
     def isopen(self, targetroad):  # checks ZCs, Lights, etc. to see if car can go this way
@@ -184,39 +186,49 @@ class Lane:
         for c in self.cars:
             c.ticksfromspawn += 1
             c.speed += c.acceleration  # a tick is 1/10 a second
-
             if c.reactiondelay != None:
                 c.reactiondelay -= 1
-            if c.reactiondelay <= 0:  # you can never be too careful with stuff going below 0
-                # figure out what to react to
-                if self.cars.index(c) == 0:  # then check zebracrossing and traffic light and middle
-                    if self.parentroad.crossing.occupied:  # then DEcelerate
-                        d = c.position
-                        s = c.speed
-                        abouttotravel = d - 0.1 * s  # how many meters you will travel in the next tick
-                        fractoftotal = abouttotravel / d
-                        c.acceleration = round(-1 * fractoftotal * s, 1)  # exponential decay: in an n'th the distance, decrease speed by an n'th
-                        # ^ rounded to one decimal place
-                    if self.parentroad.parent.middle.
-            # check surroundings of car
-            if self.cars.index(c) == 0:  # then check Middle and ZC
-                if self.parentroad.crossing.occupied:
-                    distfromzc = c.position - c.minbuffer  # minbuffer because when it gets there the car's speed will be 0
-                    c.howmuchtoaccelerate = Lane.calcaccel(c.speed, distfromzc, Car.weight)  # how much to DEcelerate, in this case
-                    c.reactiondelay = c.reactivity
 
-                else:
-                    nextcar = self.parentroad.parent.middle.nextcarinpath()
-                    if nextcar != None:  # if None then the path is almost clear, we check the Lane in the next Intersection
-                        disttocar = Intersection.distfromnextcar(c.position, c.pointstooccupy, nextcar.coords)
-                        c.howmuchtoaccelerate = Lane.calcaccel(c.speed, disttocar, Car.weight)
-                        # LPE, last place edited
-                        # now we take disttocar and figure out how much to accel/decelerate
-                        # if so set the variables, if too far away, do nothing
-                        # outside of if, make else, for nextcar == None, and check next Intersection in c.path,
-                        # check the next lane and see if there is a car less than one car's length + buffer away from Middlem
-                        # if so, figure how much to accel/decelerate
-                        # if no cars in the way, do something still based off next car, probably in the next Lane in next Intersection, and decel/accelerate
+            currgc = self.bigbrother.gridcoords
+            nextgc = c.path[0].gridcoords  # FIXME: should the index be 0 or 1?
+            ad = MindController.directiontotake(currgc, nextgc)  # absolute direction, tells us the next intersection to take
+            nextroad = self.bigbrother.roads[ad]  # car doesn't drive on this road; it drives on the similar road on the next intersection
+            # ^ however we do cross this road's ZC, so we have to check that now
+
+            # figure out what situation the car is in right now
+            if self.cars.index(c) == 0:  # front of the Lane
+                # if this crossing or nextroad.crossing occupied, brake completely, same if red light and not right turning, if yellow light, determine based on c.position and c.speed
+
+                if self.parentroad.crossing.occupied or nextroad.crossing.occupied:
+                    # figure out how much stop, set acceleration?
+                    c.setdecelspeed()  # sets speed, and sometimes position
+
+                oppositelight = self.bigbrother.getoppositeroad(self.parentroad).light
+                if oppositelight.state == 2:  # red
+                    if self.direction == 'r':  # then the car still has to stop before turning, but can turn
+                        if car.speed == 0 and car.position == 0:  # car is at front of lane and has stopped
+                            car.speed = 2  # FON?
+                            # do stuff regarding put into middle
+                        else:
+                            c.setdecelspeed()
+                    else:
+                        c.setdecelspeed()
+
+                elif oppositelight.state == 1:  # yellow
+                    # figure out whether to decelerate or keep going
+                    if c.goingthroughyellow == False:
+                        c.setdecelspeed()
+                    elif c.goingthroughyellow == None:  # then based off c.position decide whether to go through
+                        if c.speed >= c.position / 2:  # FON, but the logic here is you want to get into the Middle in less than 2 seconds
+                            c.goingthroughyellow == True
+                            # TODO: here make the speed go up, approaching the speed limit
+                            
+                    # if gtyellow is already True we don't need to do anything
+
+                else:  # green! Hooray!
+                    # same here, make speed approach speed limit
+            else:
+                pass
 
 
     @staticmethod
