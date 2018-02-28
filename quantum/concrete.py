@@ -177,7 +177,7 @@ class Lane:
 
     def carcanenter(self):  # if a car in Road.offerroad()
         lastcar = self.cars[-1]
-        if lastcar.position + lastcar.calcbuffer() > self.length:
+        if lastcar.position + Car.calcbuffer(lastcar.speed) > self.length:
             return False
         return True
 
@@ -186,13 +186,23 @@ class Lane:
         for c in self.cars:
             c.ticksfromspawn += 1
             c.speed += c.acceleration  # a tick is 1/10 a second
-            if c.reactiondelay != None:
-                c.reactiondelay -= 1
+
+            notexec = []
+            for r in c.reactiondelay:
+                r[0] -= 1  # decrement the reaction time
+                # ^ TODO: will this break because of pointers?
+
+                if r[0] == 0:
+                    c.run(r[1])  # run the command
+                else:
+                    notexec.append(list(r))
+            del c.reactiondelay[:]  # delete everything...
+            c.reactiondelay = notexec  # ... and replace it with the ones that haven't been executed
 
             currgc = self.bigbrother.gridcoords
             nextgc = c.path[0].gridcoords  # FIXME: should the index be 0 or 1?
             ad = MindController.directiontotake(currgc, nextgc)  # absolute direction, tells us the next intersection to take
-            nextroad = self.bigbrother.roads[ad]  # car doesn't drive on this road; it drives on the similar road on the next intersection
+            nextroad = self.bigbrother.roads[ad]  # car doesn't drive on this road; it drives on the adjacent road on the next intersection
             # ^ however we do cross this road's ZC, so we have to check that now
 
             # figure out what situation the car is in right now
@@ -208,7 +218,7 @@ class Lane:
                     if self.direction == 'r':  # then the car still has to stop before turning, but can turn
                         if car.speed == 0 and car.position == 0:  # car is at front of lane and has stopped
                             car.speed = 2  # FON?
-                            # do stuff regarding put into middle
+                            # TODO: do stuff regarding put into middle
                         else:
                             c.setdecelspeed()
                     else:
@@ -222,13 +232,26 @@ class Lane:
                         if c.speed >= c.position / 2:  # FON, but the logic here is you want to get into the Middle in less than 2 seconds
                             c.goingthroughyellow == True
                             # TODO: here make the speed go up, approaching the speed limit
-                            
+
                     # if gtyellow is already True we don't need to do anything
 
                 else:  # green! Hooray!
-                    # same here, make speed approach speed limit
-            else:
-                pass
+                    # same here, make speed approach speed limit TODO: finish this
+                    pass
+
+            else:  # not first car
+                # with reactiondelay, set speed of car to that of car in front unless the buffer is too small
+
+                carinfront = self.cars[self.cars.index(c) - 1]  # the car closer to the Middle
+                higherspeed = max([carinfront.speed, c.speed])  # use this to calculate the buffer
+                if c.position - carinfront.position - Car.length - Car.calcbuffer(higherspeed) <= 0:  # if the cars are too close
+                    # this should NEVER happen, so print to console
+                    print('Dude, I hate to break it to you, but it\'s debugging time. We cannot have car crashes!')
+                    exit(0)  # TODO: remove this all once debugging is done. Noe, not the whole project, just these few lines.
+
+                comm = 'self.speed = ' + str(carinfront.speed)
+                c.reactiondelay.append([Car.reactivity, comm])  # set this to be executed when the driver 'reacts'
+                # LPE, finish green light stuff above, also stuff with moving from Lane to Middle
 
 
     @staticmethod

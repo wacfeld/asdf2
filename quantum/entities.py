@@ -40,25 +40,38 @@ class Car:
         self.speed = None  # m/s, always multiple of 2?
         self.acceleration = None  # m/s^2, TODO: redundant?
         self.howmuchtoaccelerate = None  # float, how much to accelerate/decelerate, m/s^2 (see reactiondelay)
-        self.reactiondelay = None  # can be 0, 1, 2, 3, in ticks
-        # constant stuff
-        self.minb = self.length/2 + 0.5  # FON
-        self.length = 449.326  # from bumper to bumper, centimeters
+        # ^ TODO: remove this and all occurences
 
+        self.reactiondelay = []  # a list of lists, first element in sublist is reaction time left, second is the command to execute
+        # ^ left is the number of ticks left (0, 1, 2, 3) and right is the command to execute
+
+    minb = 0.5  # FON, the minimum buffer allowed
+    length = 449.326  # from bumper to bumper, centimeters
     reactivity = 3 # ticks, initial value for reactiondelay
+    # ^ TODO: make everything use reactivity, and not just the number 3
 
-    def calcbuffer(self):  # calculate real buffer based on speed
+    def run(comm):  # run an exec() command for reactiondelay
+        exec(comm)  # need to do this because has to be run from inside Car
+
+    @staticmethod
+    def calcbuffer(speed):  # calculate real buffer based on speed
         # buffer should be half of speed in mph, converted to meters
         # this way half + half of each car = correct buffer
-        mph = self.speed * 1.125  # divide by 1600, multiply by 3600, divide by 2
+        mph = speed * 1.125  # divide by 1600, multiply by 3600, divide by 2
         # ^ buts still, FON
-        b = mph + self.length / 2  # car is included in this calculation
-        return mph if mph > self.minb else self.minb  # so that cars don't get too close when speed is 0
+        b = mph + Car.length / 2  # car is included in this calculation
+        return mph if mph > Car.minb else Car.minb  # so that cars don't get too close when speed is 0
         # ^ FON
 
     def setdecelspeed(self):
         if self.position > 0.5:
-            self.speed = self.position  # easiest way I can think of to get accurate speed change
+            currsl = self.parent.parentroad.speedlimit
+            if self.position > currsl:
+                self.speed = currsl
+            else:
+                self.speed = self.position
+            # easiest way I can think of to get accurate speed change
+
         else:  # so we don't get the arrow paradox, because that would be bad
             self.speed, self.position = 0, 0
 
