@@ -27,17 +27,17 @@ class Intersection:
 
         r1, r2, r3, r4 = self.roads[0], self.roads[1], self.roads[2], self.roads[3]  # for ease of use
 
-        # set the crossings corresponding to sidewalks
-        s1 = Sidewalk(self, r1.crossing, r2.crossing)
-        s2 = Sidewalk(self, r2.crossing, r3.crossing)
-        s3 = Sidewalk(self, r3.crossing, r4.crossing)
+        # set the sidewalks
+        s1 = Sidewalk(self, r1.crossing, r2.crossing)  # upper right corner
+        s2 = Sidewalk(self, r2.crossing, r3.crossing)  # bottom right corner
+        s3 = Sidewalk(self, r3.crossing, r4.crossing)  # etc, clockwise
         s4 = Sidewalk(self, r4.crossing, r1.crossing)
         self.sidewalks = [s1, s2, s3, s4]
 
         # set the road's sidewalk attributes, for Intersection.gettargetsidewalk()
-        r1.sw1, r1.sw2 = s4, s1
-        r2.sw2, r2.sw2 = s1, s2
-        r3.sw2, r3.sw2 = s2, s3
+        r1.sw1, r1.sw2 = s4, s1  # top
+        r2.sw2, r2.sw2 = s1, s2  # right
+        r3.sw2, r3.sw2 = s2, s3  # etc clockwise
         r4.sw2, r4.sw2 = s3, s4
 
     @staticmethod
@@ -57,8 +57,10 @@ class Intersection:
         pass
 
     def onetick(self):
-        pass
-
+        for r in self.roads:
+            r.onetick()
+        for s in self.sidewalks:
+            s.onetick()
     def getoppositeroad(self, r):
         pass
 
@@ -252,11 +254,6 @@ class Lane:
                 comm = 'self.speed = ' + str(carinfront.speed)
                 c.reactiondelay.append([Car.reactivity, comm])  # set this to be executed when the driver 'reacts'
                 # LPE, finish green light stuff above, also stuff with moving from Lane to Middle
-
-
-    @staticmethod
-    def calcaccel(speed, distfromobs, weight):
-        pass
 
 
 class Middle:
