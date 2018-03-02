@@ -47,8 +47,21 @@ class Sidewalk:
         self.road2 = crossing2.parentroad
 
     def onetick(self):
-        pass
-
+        for p in self.peds:
+            # figure out next sidewalk in path
+            currtarzc = self.zctotake(p)
+            # LPE Last Place Edited
+            if p.justgothere:
+                pass
+    
+    def zctotake(self, p):
+        currgc = self.parent.gridcoords
+        nextgc = p.path[0].gridcoords  # check if it should should be 0 or 1
+        del p.path[0]
+        ad = MindController.directiontotake(currgc, nextgc)  # check function name
+        #  figure out which zc to take
+        
+# I just realized how bad some editors can be  March 2 2018
 class Portal:  # called Portal because cars/pedestrians start and end here (there are multiple portals)
     # attaches to road of intersection
     # cars coming from the intersection go directly from Middle to Portal
