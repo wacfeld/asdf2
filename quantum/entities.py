@@ -93,7 +93,7 @@ class Pedestrian:
         self.ticksfromspawn = 0  # see similar for Car
         self.walkingspeed = None  # FON or make static, m/s
         self.parent = p  # always a Sidewalk or ZebraCrossing
-        self.walkingtimeleft = Pedestrian.decidewalkingspeed() # used when walking on Road or ZebraCrossing, unit seconds
+        self.walkingtimeleft = Pedestrian.timeleft() # used when walking on Road or ZebraCrossing, unit seconds
         self.justgothere = False  # just got here, not just go there!
         # ^ used when just arrived at Sidewalk and wants to push button
 
@@ -101,7 +101,10 @@ class Pedestrian:
         self.destination = bigbrother.decidedest(self.parent)
         self.path = bigbrother.pathfind(self.parent, self.destination)
         self.currtarsw = None  # the current sidewalk they want to walk to
+        self.currtarzc = None  # Zebra Crossing ^
 
+    def timeleft(dist):
+        pass
     @staticmethod
     def decidewalkingspeed():
         pass

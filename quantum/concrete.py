@@ -33,6 +33,7 @@ class Intersection:
         s3 = Sidewalk(self, r3.crossing, r4.crossing)  # etc, clockwise
         s4 = Sidewalk(self, r4.crossing, r1.crossing)
         self.sidewalks = [s1, s2, s3, s4]
+        self.crossings = [r1.crossing, r2.crossing, r3.crossing, r4.crossing]
 
         # set the road's sidewalk attributes, for Intersection.gettargetsidewalk()
         r1.sw1, r1.sw2 = s4, s1  # top
@@ -61,6 +62,9 @@ class Intersection:
             r.onetick()
         for s in self.sidewalks:
             s.onetick()
+        for zc in self.crossings:
+            zc.onetick()
+    
     def getoppositeroad(self, r):
         pass
 
