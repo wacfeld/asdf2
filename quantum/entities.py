@@ -36,8 +36,10 @@ class Car:
         self.position = None  # location on road, scalar, meters
         self.goingthroughyellow = None  # so that a car that is stopping at yellow doesn't start up again
         # ^ used with self.reactivity
+        self.middlepath = None  # path to take when in Middle
 
         self.speed = None  # m/s, always multiple of 2?
+
         self.acceleration = None  # m/s^2, TODO: redundant?
         self.howmuchtoaccelerate = None  # float, how much to accelerate/decelerate, m/s^2 (see reactiondelay)
         # ^ TODO: remove this and all occurences

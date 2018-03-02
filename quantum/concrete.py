@@ -184,6 +184,8 @@ class Lane:
     def onetick(self):
         # go through cars, based on reaction delays, speeds, etc. move them accordingly
         for c in self.cars:
+            # TODO: finish this and figure out function call -- if c.middlepath == None:  # it just entered the lane
+                c.middlepath = self.bigbrother.middle.getpath(self, )
             c.ticksfromspawn += 1
             c.speed += c.acceleration  # a tick is 1/10 a second
 
@@ -214,7 +216,7 @@ class Lane:
                     c.setdecelspeed()  # sets speed, and sometimes position
 
                 oppositelight = self.bigbrother.getoppositeroad(self.parentroad).light
-                if oppositelight.state == 2:  # red
+                elif oppositelight.state == 2:  # red
                     if self.direction == 'r':  # then the car still has to stop before turning, but can turn
                         if car.speed == 0 and car.position == 0:  # car is at front of lane and has stopped
                             car.speed = 2  # FON?
@@ -231,13 +233,17 @@ class Lane:
                     elif c.goingthroughyellow == None:  # then based off c.position decide whether to go through
                         if c.speed >= c.position / 2:  # FON, but the logic here is you want to get into the Middle in less than 2 seconds
                             c.goingthroughyellow == True
-                            # TODO: here make the speed go up, approaching the speed limit
+                            c.speed = min(self.parentroad.speedlimit, c.speed + 1)
 
                     # if gtyellow is already True we don't need to do anything
 
                 else:  # green! Hooray!
-                    # same here, make speed approach speed limit TODO: finish this
-                    pass
+                    if self.bigbrother.middle.pathisclear(c.middlepath):
+                        # make speed go up linearly to speed limit
+                        c.speed = min(self.parentroad.speedlimit, c.speed + 1)
+                    else:
+                        # decreasing like normal
+                        c.setdecelspeed
 
             else:  # not first car
                 # with reactiondelay, set speed of car to that of car in front unless the buffer is too small
@@ -253,6 +259,7 @@ class Lane:
                 c.reactiondelay.append([Car.reactivity, comm])  # set this to be executed when the driver 'reacts'
                 # LPE, finish green light stuff above, also stuff with moving from Lane to Middle
 
+            # TODO: also make car position increase and stuff like that
 
     @staticmethod
     def calcaccel(speed, distfromobs, weight):
@@ -274,11 +281,14 @@ class Middle:
 
     sidelength = 6 * 1000  # (FON) must be even number
 
+    # TODO: finish all of these
     def nextcarinpath(self, path):
         pass
 
+    def pathisclear(self, path):
+        pass
 
-    def getpath(self, lane, targetroad, third):
+    def getpath(self, lane, targetad, third):
         pass
 
     def onetick(self):
