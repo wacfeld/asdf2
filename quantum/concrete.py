@@ -64,7 +64,7 @@ class Intersection:
             s.onetick()
         for zc in self.crossings:
             zc.onetick()
-    
+
     def getoppositeroad(self, r):
         pass
 

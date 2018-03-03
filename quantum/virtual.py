@@ -19,10 +19,20 @@ class ZebraCrossing:
         self.pedlight = Light(self)
         self.buttonpushed = False  # does what those buttons on telephone poles do IRL
 
+        # TODO: Make ZC know about its sidewalk neighbours
+
     def onetick(self):
         # if buttonpushed do something with light?
         pass
 
+    def getrelad(self, sw):  # oxymoron?
+        # we get the absolute direction of this ZC, relative to one of its adjacent sidewalks
+        road = self.parentroad
+        if sw == road.sw1:  # then it's on the right side, relative to the road
+            return (road.absolutedir - 1) % 4
+        else:
+            return (road.absolutedir + 1) % 4
+        print("Error in ZebraCrossin.retrelad()")
 
 class Light:  # applies to traffic and pedestrian lights, since they are effectively the same, except in timing
     def __init__(self, parent):  # will figure out parenttype on its own
