@@ -16,7 +16,6 @@ class Car:
         self.ticksfromspawn = 0  # note that this is not seconds, but ticks, so always integer value
         # ^ TODO: add stuff to increment this
 
-
         # these are used in conjunction with similar fields in Middle
 
         # stuff used in Lane
@@ -26,7 +25,6 @@ class Car:
         # ^ got from Honda Civic
 
         # used when in the middle of an intersection
-        self.occupiedindex = None  # array of points this car occupies, from Middle.occupiedpoints
         self.pointstooccupy = None  # array of points the car will occupy, also used as path
         self.coords = [None, None]  # (0,0) is center of Intersection, x moves right, y moves up
         self.motionvector = [None, None]  # where it moves next in the Intersection; might change to direction and angle
@@ -39,10 +37,6 @@ class Car:
         self.middlepath = None  # path to take when in Middle
 
         self.speed = None  # m/s, always multiple of 2?
-
-        self.acceleration = None  # m/s^2, TODO: redundant?
-        self.howmuchtoaccelerate = None  # float, how much to accelerate/decelerate, m/s^2 (see reactiondelay)
-        # ^ TODO: remove this and all occurences
 
         self.reactiondelay = []  # a list of lists, first element in sublist is reaction time left, second is the command to execute
         # ^ left is the number of ticks left (0, 1, 2, 3) and right is the command to execute
@@ -93,18 +87,19 @@ class Pedestrian:
         self.ticksfromspawn = 0  # see similar for Car
         self.walkingspeed = None  # FON or make static, m/s
         self.parent = p  # always a Sidewalk or ZebraCrossing
-        self.walkingtimeleft = Pedestrian.timeleft() # used when walking on Road or ZebraCrossing, unit seconds
+        self.walkingtimeleft = None
         self.justgothere = False  # just got here, not just go there!
         # ^ used when just arrived at Sidewalk and wants to push button
 
-        bigbrother = self.parent.parent
+        bigbrother = self.parent.parent  # at init, parent of parent is MC
         self.destination = bigbrother.decidedest(self.parent)
         self.path = bigbrother.pathfind(self.parent, self.destination)
         self.currtarsw = None  # the current sidewalk they want to walk to
-        self.currtarzc = None  # Zebra Crossing ^
+        self.currtarzc = None  # Zebra Crossing, or road ^
 
     def timeleft(dist):
-        pass
+        return dist / self.walkingspeed * 10  # * 10 to make in ticks
+
     @staticmethod
     def decidewalkingspeed():
         pass

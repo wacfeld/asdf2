@@ -15,15 +15,26 @@ class ZebraCrossing:
         self.occupied = False
         self.peds = []
         self.parentroad = parent
-        self.length = None  # FON, probably should be random
         self.pedlight = Light(self)
         self.buttonpushed = False  # does what those buttons on telephone poles do IRL
 
-        # TODO: Make ZC know about its sidewalk neighbours
+        self.sw1 = self.parentroad.sw1
+        self.sw2 = self.parentroad.sw2
+
+    self.length = None  # FON, probably should be random
 
     def onetick(self):
-        # if buttonpushed do something with light?
-        pass
+        if self.buttonpushed:
+            self.buttonpushed = False
+            # TODO: do stuff
+
+        for p in self.peds:
+            p.ticksfromspawn += 1
+            p.walkingtimeleft -= 1
+            if p.walkingtimeleft <= 0:
+                p.parent = p.currtarsw
+                p.currtarsw = None
+                p.justgothere = True
 
     def getrelad(self, sw):  # oxymoron?
         # we get the absolute direction of this ZC, relative to one of its adjacent sidewalks
@@ -34,6 +45,10 @@ class ZebraCrossing:
             return (road.absolutedir + 1) % 4
         print("Error in ZebraCrossin.retrelad()")
 
+    def getoppositesw(self, sw):
+        return self.sw1 if sw == self.sw2 else self.sw2
+
+
 class Light:  # applies to traffic and pedestrian lights, since they are effectively the same, except in timing
     def __init__(self, parent):  # will figure out parenttype on its own
         self.state = 2  # same characters for pedestrian lights, in the matching which makes sense
@@ -43,7 +58,7 @@ class Light:  # applies to traffic and pedestrian lights, since they are effecti
 
         self.yellowtimeleft = None
 
-    constyellowtime = None  # FON, the amount of time a light will be yellow
+    yellowtime = None  # FON, the amount of time a light will be yellow
 
 
 class Sidewalk:
@@ -67,13 +82,26 @@ class Sidewalk:
                 del p.path[0]
                 ad = MindController.directiontotake(currgc, nextgc)  # check function name
 
-                if
+                relad1 = self.crossing1.getrelad(self)  # check declaration
+                relad2 = self.crossng2.getrelas(self)
+
+                if ad == relad1:
+                	p.currtarzc = self.crossing1
+                elif ad == relad2:
+                	p.crrtarzc = self.crossing2
+                else:  # taking a road next
+                	p.currtarzc = self.parent.roads[ad]  # TODO: change currtarzc to more genera
 
                 # push the button!
-                p.currtarzc.buttonpushed = True
-                if p.currtarzc.pedlight.state == 0:  # green
-                    p.parent = p.currtarzc
-                    p.currtarzc = None
+                if type(p.currtarzc) is ZebraCrossing:
+                	p.currtarzc.buttonpushed = True
+                    p.currtarsw = p.currtarzc.getoppositesw(self)
+                	if p.currtarzc.pedlight.state == 0:  # green
+                        p.walkingtimeleft = Pedestrian.timeleft(ZebraCrossing.length)
+                    	p.parent = p.currtarzc
+                        p.currtarzc = None
+                else:  # give to road
+                	p.currtarzc.offerroad(p)
 
 
 # I just realized how bad some editors can be - March 2 2018

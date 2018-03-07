@@ -81,6 +81,8 @@ class Road:
         self.right = Lane(2, self, self.rc[2])
         self.lanes = [self.left, self.forward, self.right]
 
+        self.middle = self.parent.middle
+
         self.absolutedir = ad  # the way the road is facing based off the whole grid
         self.parent = p
 
@@ -109,6 +111,7 @@ class Road:
         obj.parent = self
         if type(obj) is Car:
             if obj.lanetoenter == None:  # then figure that out, this is kept if the car is rejected
+                # TODO: accont for if going to portal next
                 currgc = self.parent.gridcoords
                 nextgc = obj.path[1].gridcoords  # intersection after this one in Pedestrian's path
                 del obj.path[0]
@@ -123,11 +126,11 @@ class Road:
                 obj.lanetoenter = None  # reset for later
                 obj.bigbrother = self.parent
                 obj.speed = None  # FON
-                obj.acceleration = None # ^
 
                 return True  # operation succeeded, car entered
 
-        if type(obj) is Pedestrian:
+        if type(obj) is Pedestrian: # TODO: accont for if going to portal next
+            p.currtarzc = None
             currgc = self.parent.gridcoords
             nextgc = obj.path[1].gridcoords
             del obj.path[0]  # we are done with this
@@ -144,7 +147,7 @@ class Road:
 
             obj.parent = self
             obj.bigbrother = self.parent
-            obj.waitingtimeleft = 10 * obj.walkingspeed / self.length  # * 10 to convert to ticks
+            obj.walkingtimeleft = Pedestrian.timeleft(self.length)  # * 10 to convert to ticks
 
             self.pedwaiting.append(obj)
 
@@ -190,12 +193,12 @@ class Lane:
     def onetick(self):
         # go through cars, based on reaction delays, speeds, etc. move them accordingly
         for c in self.cars:
-            # TODO: finish this and figure out function call -- if c.middlepath == None:  # it just entered the lane
-                c.middlepath = self.bigbrother.middle.getpath(self, )
+            # if c.middlepath == None:  # it just entered the lane
+                # TODO: finish this and figure out function call
+                # c.middlepath = self.bigbrother.middle.getpath(self, )
             c.ticksfromspawn += 1
-            c.speed += c.acceleration  # a tick is 1/10 a second
 
-            notexec = []
+            notexec = []  # not executed, as in not run
             for r in c.reactiondelay:
                 r[0] -= 1  # decrement the reaction time
                 # ^ TODO: will this break because of pointers?
@@ -249,7 +252,7 @@ class Lane:
                         c.speed = min(self.parentroad.speedlimit, c.speed + 1)
                     else:
                         # decreasing like normal
-                        c.setdecelspeed
+                        c.setdecelspeed()
 
             else:  # not first car
                 # with reactiondelay, set speed of car to that of car in front unless the buffer is too small
@@ -263,9 +266,13 @@ class Lane:
 
                 comm = 'self.speed = ' + str(carinfront.speed)
                 c.reactiondelay.append([Car.reactivity, comm])  # set this to be executed when the driver 'reacts'
-                # LPE, finish green light stuff above, also stuff with moving from Lane to Middle
 
-            # TODO: also make car position increase and stuff like that
+            c.position -= c.speed / 10
+            # put car into middle
+            if c.position <= 0 and self.parentroad.middle.pathisclear(c.middlepath):  # go into Middle
+                # we let Middle deal with directions and fun stuff, here we just dump it
+                self.parentroad.middle.offermiddle(c)
+
 
 class Middle:
     # the middle of the intersection; split up into nxn squares
@@ -273,14 +280,17 @@ class Middle:
     # certain square are special; e.g. some are places a car can leave or enter an intersection
 
     def __init__(self, parent):
-        self.squares = [[None] * self.sidelength for i in range(self.sidelength)]
         self.parent = parent
         self.cars = []
         self.occupiedpoints = []  # array of points that cars or their buffer occupy at this instant
         self.tobeoccupied = []  # matrix of points that cars are going to occupy
         # ^ used with Car.position to decide right of way
 
-    sidelength = 6 * 1000  # (FON) must be even number
+    sidelength = 60  # TODO: FON?
+
+    rightpivotmapping = {0:[-30,30], 1:[30,30], 2:[30,-30], 3:[-30,-30]}
+    leftpivotmapping = {0:[30,30], 1:[30,-30], 2:[-30,-30], 3:[-30,30]}  # used in Middle.getpath()
+    # ^ based off currad get center of circle (pivot)
 
     # TODO: finish all of these
     def nextcarinpath(self, path):
@@ -289,8 +299,22 @@ class Middle:
     def pathisclear(self, path):
         pass
 
-    def getpath(self, lane, targetad, third):
-        pass
+    def getpath(self, c, lane, targetad):
+        # note that targetad is the ad relative to THIS intersection, not the next in path
+        # first figure out straight line or curved
+        currad = lane.parentroad.absolutedirection
+        if (currad + 2) % 4 == targetad:  # straight line
+
+        elif (currad + 1) % 4 == targetad:  # left, big circle
+            pass
+        else:  # right, little circle
+            pass
+
 
     def onetick(self):
         pass
+
+    def offermiddle(self, c):
+        # we always accept it because it's been checked beforehand
+        c.parent = self
+        # TODO: decide nextroad
